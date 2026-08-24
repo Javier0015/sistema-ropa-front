@@ -151,6 +151,10 @@ export default function POS() {
   const [scannerAbierto, setScannerAbierto] = useState(false);
   const [scannerTipo, setScannerTipo] = useState(null);
 
+  // En móvil el carrito se abre como una hoja inferior para mantener
+  // la pantalla de productos limpia y enfocada en la venta.
+  const [carritoMovilAbierto, setCarritoMovilAbierto] = useState(false);
+
   const [codigoTarjeta, setCodigoTarjeta] = useState('');
   const [tarjetaPuntos, setTarjetaPuntos] = useState(null);
   const [buscandoTarjeta, setBuscandoTarjeta] = useState(false);
@@ -178,6 +182,10 @@ export default function POS() {
   const sucursalActual = useMemo(() => {
     return sucursales.find((s) => Number(s.id_sucursal) === Number(idSucursal));
   }, [sucursales, idSucursal]);
+
+  const cajaActual = useMemo(() => {
+    return cajas.find((c) => Number(c.id_caja) === Number(idCaja));
+  }, [cajas, idCaja]);
 
   const correoTicketDigital = String(tarjetaPuntos?.correo || '')
     .trim()
@@ -2130,176 +2138,199 @@ export default function POS() {
     await agregarAlCarrito(producto);
   };
 
+  const totalPrendasCarrito = carrito.reduce(
+    (total, item) => total + Number(item.cantidad || 0),
+    0
+  );
+
+  const propsCarrito = {
+    carrito,
+    tarjetaPuntos,
+    codigoTarjeta,
+    setCodigoTarjeta,
+    buscandoTarjeta,
+    buscarTarjetaPuntos,
+    abrirEscanerTarjeta,
+    quitarTarjetaPuntos,
+    metodoPago,
+    seleccionarMetodoPago,
+    montoRecibido,
+    setMontoRecibido,
+    pagoMixtoActivo,
+    alternarPagoMixto,
+    pagosMixtos,
+    actualizarPagoMixto,
+    resumenPagosMixtos,
+    cobrarImpuesto,
+    setCobrarImpuesto,
+    resumen,
+    formatoMoneda,
+    formatoNumero,
+    formatoFechaCorta,
+    aumentarCantidad,
+    disminuirCantidad,
+    cambiarCantidadManual,
+    quitarDelCarrito,
+    limpiarVenta,
+    cobrarVenta,
+    cobrando,
+    puntosClienteActivo,
+    porcentajeClientePuntos,
+    enviarTicketDigital,
+    setEnviarTicketDigital,
+    correoTicketDigital,
+    tieneCorreoTicketDigital,
+    puedeEnviarTicketDigital,
+    configuracionCorreoSmtp,
+    cargandoConfiguracionCorreo,
+    sesionAbierta,
+  };
+
   return (
-    <div className="min-h-screen w-full max-w-full overflow-hidden bg-[#FFF9FA] pb-8">
-      <section className="rounded-[2rem] border border-[#F0E2E7] bg-white p-4 shadow-[0_15px_45px_rgba(125,76,91,0.06)] sm:p-6">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex min-w-0 items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl bg-[#B85F7D] text-white shadow-lg shadow-[#B85F7D]/20">
-              <ShoppingCart size={28} />
+    <div className="min-h-screen w-full max-w-full overflow-hidden bg-[#FFF9FA] pb-28 xl:pb-8">
+      {/* Encabezado simple: en operación normal solo importa vender. */}
+      <section className="rounded-[1.75rem] border border-[#F0E2E7] bg-white p-4 shadow-[0_12px_35px_rgba(125,76,91,0.06)] sm:p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#B85F7D] text-white shadow-md shadow-[#B85F7D]/20 sm:h-12 sm:w-12">
+              <ShoppingCart size={23} />
             </div>
 
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-black tracking-tight text-[#33292D] sm:text-3xl">
-                  Punto de venta
+                <h1 className="text-xl font-black tracking-tight text-[#33292D] sm:text-2xl">
+                  Nueva venta
                 </h1>
-
                 <span
-                  className={`rounded-full px-3 py-1 text-xs font-black ${
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black ${
                     sesionAbierta
                       ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-red-100 text-red-700'
+                      : 'bg-amber-100 text-amber-800'
                   }`}
                 >
-                  {sesionAbierta ? 'Caja abierta' : 'Caja cerrada'}
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      sesionAbierta ? 'bg-emerald-500' : 'bg-amber-500'
+                    }`}
+                  />
+                  {sesionAbierta ? 'Lista para vender' : 'Caja cerrada'}
                 </span>
               </div>
 
-              <p className="mt-1 max-w-2xl text-sm text-[#8B7A80] sm:text-base">
-                Selecciona la sucursal, agrega productos y procesa la venta.
+              <p className="mt-1 truncate text-xs font-semibold text-[#8B7A80] sm:text-sm">
+                {sucursalActual?.nombre || 'Sucursal'}
+                {cajaActual?.nombre ? ` · ${cajaActual.nombre}` : ''}
               </p>
             </div>
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <button
-              type="button"
-              onClick={abrirCajaPOS}
-              disabled={!sesionAbierta}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#FFF0F4] px-5 py-3 text-sm font-black text-[#A84E6C] ring-1 ring-[#F0DCE3] transition hover:bg-[#F9E1E8] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Banknote size={18} />
-              Abrir cajón
-            </button>
-
-            <button
-              type="button"
-              onClick={refrescarTodo}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B85F7D] px-5 py-3 text-sm font-black text-white transition hover:bg-[#A84E6C]"
-            >
-              <RefreshCw size={18} className={cargando ? 'animate-spin' : ''} />
-              Actualizar
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-3">
-          <div className="rounded-3xl border border-[#F0E2E7] bg-[#FFFAFB] p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#B85F7D] text-xs font-black text-white">1</span>
-              <p className="text-sm font-black text-[#4A3A40]">Sucursal</p>
-            </div>
-
-            {puedeCambiarSucursal ? (
-              <select
-                value={idSucursal}
-                onChange={(e) => setIdSucursal(e.target.value)}
-                className="w-full rounded-2xl border border-[#EEDFE4] bg-white px-4 py-3 text-sm font-bold text-[#5F4E55] outline-none focus:ring-2 focus:ring-[#E5AFC0]"
-              >
-                <option value="">Selecciona sucursal</option>
-                {sucursales.map((sucursal) => (
-                  <option key={sucursal.id_sucursal} value={sucursal.id_sucursal}>
-                    {sucursal.nombre}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div className="rounded-2xl border border-[#EEDFE4] bg-white px-4 py-3 text-sm font-black text-[#5F4E55]">
-                {sucursalActual?.nombre || sucursales[0]?.nombre || 'Sucursal asignada'}
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-3xl border border-[#F0E2E7] bg-[#FFFAFB] p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#B85F7D] text-xs font-black text-white">2</span>
-              <p className="text-sm font-black text-[#4A3A40]">Caja</p>
-            </div>
-
-            <select
-              value={idCaja}
-              onChange={(e) => setIdCaja(e.target.value)}
-              disabled={!puedeCambiarCaja || cajas.length === 0}
-              className="w-full rounded-2xl border border-[#EEDFE4] bg-white px-4 py-3 text-sm font-bold text-[#5F4E55] outline-none focus:ring-2 focus:ring-[#E5AFC0] disabled:cursor-not-allowed disabled:bg-[#F8F2F4]"
-            >
-              <option value="">
-                {cajas.length === 0 ? 'No tienes una caja asignada' : 'Selecciona caja'}
-              </option>
-              {cajas.map((caja) => (
-                <option key={caja.id_caja} value={caja.id_caja}>
-                  {caja.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div
-            className={`rounded-3xl border p-4 ${
-              sesionAbierta
-                ? 'border-emerald-200 bg-emerald-50'
-                : 'border-amber-200 bg-amber-50'
-            }`}
+          <button
+            type="button"
+            onClick={refrescarTodo}
+            aria-label="Actualizar punto de venta"
+            title="Actualizar"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#FFF0F4] text-[#A84E6C] transition active:scale-95 sm:h-12 sm:w-12"
           >
-            <div className="mb-3 flex items-center gap-2">
-              <span
-                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-black text-white ${
-                  sesionAbierta ? 'bg-emerald-600' : 'bg-amber-600'
-                }`}
-              >
-                3
-              </span>
-              <p className="text-sm font-black text-[#4A3A40]">Estado</p>
-            </div>
-
-            <div className="rounded-2xl bg-white px-4 py-3 text-sm font-black text-[#5F4E55]">
-              {sesionAbierta
-                ? `Lista para vender · Sesión #${sesionAbierta.id_sesion}`
-                : 'Debes abrir caja antes de vender'}
-            </div>
-          </div>
+            <RefreshCw size={19} className={cargando ? 'animate-spin' : ''} />
+          </button>
         </div>
+
+        {/* La selección de sucursal/caja sigue existiendo, pero no compite con la venta. */}
+        {(puedeCambiarSucursal || puedeCambiarCaja) && (
+          <details className="mt-3 overflow-hidden rounded-2xl border border-[#F2E5E9] bg-[#FFFBFC]">
+            <summary className="cursor-pointer list-none px-4 py-3 text-xs font-black text-[#806D74]">
+              Configuración del punto de venta
+            </summary>
+
+            <div className="grid grid-cols-1 gap-3 border-t border-[#F2E5E9] p-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-[#9A858D]">
+                  Sucursal
+                </label>
+                {puedeCambiarSucursal ? (
+                  <select
+                    value={idSucursal}
+                    onChange={(e) => setIdSucursal(e.target.value)}
+                    className="w-full rounded-2xl border border-[#EEDFE4] bg-white px-4 py-3 text-sm font-bold text-[#5F4E55] outline-none focus:ring-2 focus:ring-[#E5AFC0]"
+                  >
+                    <option value="">Selecciona sucursal</option>
+                    {sucursales.map((sucursal) => (
+                      <option key={sucursal.id_sucursal} value={sucursal.id_sucursal}>
+                        {sucursal.nombre}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="rounded-2xl border border-[#EEDFE4] bg-white px-4 py-3 text-sm font-black text-[#5F4E55]">
+                    {sucursalActual?.nombre || sucursales[0]?.nombre || 'Sucursal asignada'}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-[#9A858D]">
+                  Caja
+                </label>
+                <select
+                  value={idCaja}
+                  onChange={(e) => setIdCaja(e.target.value)}
+                  disabled={!puedeCambiarCaja || cajas.length === 0}
+                  className="w-full rounded-2xl border border-[#EEDFE4] bg-white px-4 py-3 text-sm font-bold text-[#5F4E55] outline-none focus:ring-2 focus:ring-[#E5AFC0] disabled:cursor-not-allowed disabled:bg-[#F8F2F4]"
+                >
+                  <option value="">
+                    {cajas.length === 0 ? 'No tienes una caja asignada' : 'Selecciona caja'}
+                  </option>
+                  {cajas.map((caja) => (
+                    <option key={caja.id_caja} value={caja.id_caja}>
+                      {caja.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </details>
+        )}
       </section>
 
       {!sesionAbierta && (
-        <section className="mt-5 rounded-3xl border border-amber-200 bg-amber-50 p-4 text-amber-900 shadow-sm sm:p-5">
-          <div className="flex items-start gap-3">
-            <Wallet size={24} className="mt-0.5 shrink-0" />
-            <div>
-              <p className="font-black">Caja no abierta</p>
-              <p className="mt-1 text-sm">
-                Abre una caja para habilitar la venta de productos.
+        <section className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+          <div className="flex items-center gap-3">
+            <Wallet size={20} className="shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-black">Caja cerrada</p>
+              <p className="text-xs font-semibold text-amber-800">
+                Abre tu sesión desde el módulo Caja para comenzar a vender.
               </p>
             </div>
           </div>
         </section>
       )}
 
-      <section className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_430px]">
-        <div className="min-w-0 space-y-5">
-          <div className="rounded-[2rem] border border-[#F0E2E7] bg-white p-4 shadow-sm sm:p-5">
-            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <section className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
+        <div className="min-w-0 space-y-4">
+          {/* Buscador grande y fácil de usar con una mano. */}
+          <div className="rounded-[1.75rem] border border-[#F0E2E7] bg-white p-4 shadow-sm sm:p-5">
+            <div className="mb-3 flex items-end justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase tracking-wide text-[#B85F7D]">Productos</p>
-                <h2 className="text-xl font-black text-[#33292D]">Buscar y agregar</h2>
-                <p className="text-sm text-[#8B7A80]">
-                  Busca por nombre, código de barras, marca, categoría o presentación.
+                <p className="text-xs font-black uppercase tracking-wide text-[#B85F7D]">
+                  Productos
                 </p>
+                <h2 className="text-lg font-black text-[#33292D] sm:text-xl">
+                  ¿Qué vas a vender?
+                </h2>
               </div>
 
-              <div className="flex gap-2">
-                <div className="rounded-2xl bg-[#FFF3F6] px-4 py-3 text-center">
-                  <p className="text-[10px] font-black uppercase text-[#A08790]">Visibles</p>
-                  <p className="text-xl font-black text-[#A84E6C]">{formatoNumero(inventario.length)}</p>
-                </div>
-                <div className="rounded-2xl bg-[#FFF3F6] px-4 py-3 text-center">
-                  <p className="text-[10px] font-black uppercase text-[#A08790]">Carrito</p>
-                  <p className="text-xl font-black text-[#A84E6C]">{formatoNumero(carrito.length)}</p>
-                </div>
+              <div className="shrink-0 rounded-2xl bg-[#FFF3F6] px-3 py-2 text-center">
+                <p className="text-[9px] font-black uppercase tracking-wide text-[#A08790]">
+                  Disponibles
+                </p>
+                <p className="text-lg font-black leading-none text-[#A84E6C]">
+                  {formatoNumero(inventario.length)}
+                </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
+            <div className="grid grid-cols-[minmax(0,1fr)_48px_48px] gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
               <div className="relative min-w-0">
                 <Search className="absolute left-4 top-3.5 text-[#B6A3AA]" size={20} />
                 <input
@@ -2316,12 +2347,13 @@ export default function POS() {
                       cargarInventario(buscar);
                     }
                   }}
-                  className="w-full rounded-2xl border border-[#EEDFE4] bg-[#FFFBFC] py-3 pl-11 pr-4 text-sm font-semibold text-[#4A3A40] outline-none focus:bg-white focus:ring-2 focus:ring-[#E5AFC0]"
-                  placeholder="Buscar producto..."
+                  className="w-full rounded-2xl border border-[#EEDFE4] bg-[#FFFBFC] py-3 pl-11 pr-4 text-base font-semibold text-[#4A3A40] outline-none focus:bg-white focus:ring-2 focus:ring-[#E5AFC0]"
+                  placeholder="Buscar prenda..."
+                  autoComplete="off"
                 />
 
                 {mostrandoSugerenciasProductos && (
-                  <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-2xl border border-[#F0E2E7] bg-white shadow-xl">
+                  <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 max-h-80 overflow-y-auto rounded-2xl border border-[#F0E2E7] bg-white shadow-xl">
                     {cargandoSugerenciasProductos ? (
                       <div className="flex items-center gap-2 p-4 text-sm font-bold text-[#8B7A80]">
                         <Loader2 size={17} className="animate-spin" />
@@ -2336,15 +2368,21 @@ export default function POS() {
                           type="button"
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => seleccionarSugerenciaProducto(producto)}
-                          className="flex w-full items-center justify-between gap-3 border-b border-[#F4EAED] px-4 py-3 text-left transition last:border-b-0 hover:bg-[#FFF5F7]"
+                          className="flex w-full items-center justify-between gap-3 border-b border-[#F4EAED] px-4 py-3 text-left transition last:border-b-0 active:bg-[#FFF5F7]"
                         >
                           <div className="min-w-0">
                             <p className="truncate text-sm font-black text-[#43363B]">
                               {producto.producto || producto.nombre}
                             </p>
                             <p className="mt-0.5 truncate text-xs text-[#9A858D]">
-                              {producto.marca || 'Sin marca'}
-                              {producto.presentacion ? ` · ${producto.presentacion}` : ''}
+                              {[
+                                producto.marca,
+                                producto.presentacion,
+                                producto.color,
+                                producto.talla,
+                              ]
+                                .filter(Boolean)
+                                .join(' · ') || 'Producto'}
                             </p>
                           </div>
                           <p className="shrink-0 text-sm font-black text-[#B85F7D]">
@@ -2360,10 +2398,12 @@ export default function POS() {
               <button
                 type="button"
                 onClick={abrirEscanerProducto}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#FFF0F4] px-5 py-3 text-sm font-black text-[#A84E6C] transition hover:bg-[#F9E1E8]"
+                aria-label="Escanear producto"
+                title="Escanear producto"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#FFF0F4] px-0 text-sm font-black text-[#A84E6C] active:scale-95 sm:px-4"
               >
-                <Barcode size={18} />
-                Escanear
+                <Barcode size={19} />
+                <span className="hidden sm:inline">Escanear</span>
               </button>
 
               <button
@@ -2372,10 +2412,12 @@ export default function POS() {
                   setMostrandoSugerenciasProductos(false);
                   cargarInventario(buscar);
                 }}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B85F7D] px-5 py-3 text-sm font-black text-white transition hover:bg-[#A84E6C]"
+                aria-label="Buscar producto"
+                title="Buscar"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#B85F7D] px-0 text-sm font-black text-white active:scale-95 sm:px-4"
               >
-                <Search size={18} />
-                Buscar
+                <Search size={19} />
+                <span className="hidden sm:inline">Buscar</span>
               </button>
             </div>
           </div>
@@ -2393,64 +2435,21 @@ export default function POS() {
           />
         </div>
 
-        <CarritoPOS
-          carrito={carrito}
-          tarjetaPuntos={tarjetaPuntos}
-          codigoTarjeta={codigoTarjeta}
-          setCodigoTarjeta={setCodigoTarjeta}
-          buscandoTarjeta={buscandoTarjeta}
-          buscarTarjetaPuntos={buscarTarjetaPuntos}
-          abrirEscanerTarjeta={() => {
-            setScannerTipo('TARJETA');
-            setScannerAbierto(true);
-          }}
-          quitarTarjetaPuntos={quitarTarjetaPuntos}
-          metodoPago={metodoPago}
-          seleccionarMetodoPago={seleccionarMetodoPago}
-          montoRecibido={montoRecibido}
-          setMontoRecibido={setMontoRecibido}
-          pagoMixtoActivo={pagoMixtoActivo}
-          alternarPagoMixto={alternarPagoMixto}
-          pagosMixtos={pagosMixtos}
-          actualizarPagoMixto={actualizarPagoMixto}
-          resumenPagosMixtos={resumenPagosMixtos}
-          cobrarImpuesto={cobrarImpuesto}
-          setCobrarImpuesto={setCobrarImpuesto}
-          resumen={resumen}
-          formatoMoneda={formatoMoneda}
-          formatoNumero={formatoNumero}
-          formatoFechaCorta={formatoFechaCorta}
-          aumentarCantidad={aumentarCantidad}
-          disminuirCantidad={disminuirCantidad}
-          cambiarCantidadManual={cambiarCantidadManual}
-          quitarDelCarrito={quitarDelCarrito}
-          limpiarVenta={limpiarVenta}
-          cobrarVenta={cobrarVenta}
-          cobrando={cobrando}
-          puntosClienteActivo={puntosClienteActivo}
-          porcentajeClientePuntos={porcentajeClientePuntos}
-          enviarTicketDigital={enviarTicketDigital}
-          setEnviarTicketDigital={setEnviarTicketDigital}
-          correoTicketDigital={correoTicketDigital}
-          tieneCorreoTicketDigital={tieneCorreoTicketDigital}
-          puedeEnviarTicketDigital={puedeEnviarTicketDigital}
-          configuracionCorreoSmtp={configuracionCorreoSmtp}
-          cargandoConfiguracionCorreo={cargandoConfiguracionCorreo}
-        />
+        {/* En escritorio se mantiene el resumen permanente a la derecha. */}
+        <div className="hidden xl:block">
+          <CarritoPOS {...propsCarrito} />
+        </div>
       </section>
 
       {ventaFinalizada && (
-        <section className="mt-5 rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-start gap-3">
-              <CheckCircle size={28} className="mt-0.5 shrink-0 text-emerald-700" />
-              <div>
-                <p className="font-black">Última venta registrada</p>
-                <p className="text-sm">
-                  Folio: <span className="font-black">{ventaFinalizada.venta?.folio}</span>
-                </p>
-                <p className="text-sm">
-                  Total: <span className="font-black">{formatoMoneda(ventaFinalizada.resumen?.total)}</span>
+        <section className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <CheckCircle size={24} className="shrink-0 text-emerald-700" />
+              <div className="min-w-0">
+                <p className="text-sm font-black">Última venta registrada</p>
+                <p className="truncate text-xs font-semibold text-emerald-700">
+                  {ventaFinalizada.venta?.folio} · {formatoMoneda(ventaFinalizada.resumen?.total)}
                 </p>
               </div>
             </div>
@@ -2458,13 +2457,56 @@ export default function POS() {
             <button
               type="button"
               onClick={() => imprimirTicketPOS()}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B85F7D] px-5 py-3 text-sm font-black text-white transition hover:bg-[#A84E6C]"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-black text-emerald-800 shadow-sm"
             >
-              <ReceiptText size={18} />
-              Imprimir ticket
+              <ReceiptText size={16} />
+              <span className="hidden sm:inline">Imprimir</span>
             </button>
           </div>
         </section>
+      )}
+
+      {/* Barra de venta fija en móvil: siempre deja el total a un toque. */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#EEDFE4] bg-white/95 p-3 shadow-[0_-10px_30px_rgba(72,46,55,0.10)] backdrop-blur xl:hidden">
+        <div className="mx-auto flex max-w-2xl items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-black uppercase tracking-wide text-[#9A858D]">
+              {totalPrendasCarrito} prenda(s)
+            </p>
+            <p className="truncate text-xl font-black text-[#33292D]">
+              {formatoMoneda(resumen.total)}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setCarritoMovilAbierto(true)}
+            disabled={!sesionAbierta || carrito.length === 0}
+            className="inline-flex min-h-12 min-w-[150px] items-center justify-center gap-2 rounded-2xl bg-[#B85F7D] px-5 py-3 text-sm font-black text-white shadow-lg shadow-[#B85F7D]/20 disabled:cursor-not-allowed disabled:bg-[#D8C8CD]"
+          >
+            <ShoppingCart size={18} />
+            {carrito.length === 0 ? 'Sin productos' : 'Ver venta'}
+          </button>
+        </div>
+      </div>
+
+      {/* Hoja inferior de cobro para teléfono. */}
+      {carritoMovilAbierto && (
+        <div
+          className="fixed inset-0 z-[90] bg-[#392F33]/45 backdrop-blur-sm xl:hidden"
+          onClick={() => setCarritoMovilAbierto(false)}
+        >
+          <div
+            className="absolute inset-x-0 bottom-0 max-h-[94dvh] overflow-y-auto overscroll-contain rounded-t-[2rem] bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CarritoPOS
+              {...propsCarrito}
+              modoMovil
+              onCerrar={() => setCarritoMovilAbierto(false)}
+            />
+          </div>
+        </div>
       )}
 
       {modalLotesProducto && (
@@ -2494,7 +2536,6 @@ export default function POS() {
     </div>
   );
 }
-
 function ProductosDisponibles({
   inventario,
   cargando,
@@ -2506,7 +2547,7 @@ function ProductosDisponibles({
   productoControlaLotes,
   agregarAlCarrito,
 }) {
-  const PRODUCTOS_POR_PAGINA = 8;
+  const PRODUCTOS_POR_PAGINA = 12;
   const [paginaActual, setPaginaActual] = useState(1);
 
   const totalProductos = inventario.length;
@@ -2520,23 +2561,21 @@ function ProductosDisponibles({
   }, [inventario]);
 
   return (
-    <div className="overflow-hidden rounded-[2rem] border border-[#F0E2E7] bg-white shadow-sm">
-      <div className="flex flex-col gap-3 border-b border-[#F4EAED] px-4 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+    <div className="overflow-hidden rounded-[1.75rem] border border-[#F0E2E7] bg-white shadow-sm">
+      <div className="flex items-center justify-between gap-3 border-b border-[#F4EAED] px-4 py-3.5 sm:px-5">
         <div className="min-w-0">
-          <p className="text-xs font-black uppercase tracking-wide text-[#B85F7D]">Inventario</p>
-          <h2 className="text-xl font-black text-[#33292D]">Productos disponibles</h2>
-          <p className="mt-1 text-sm text-[#8B7A80]">
-            {sucursalActual?.nombre || 'Sin sucursal seleccionada'}
+          <p className="text-sm font-black text-[#392F33]">Prendas disponibles</p>
+          <p className="truncate text-xs font-semibold text-[#9A858D]">
+            {sucursalActual?.nombre || 'Sucursal'}
           </p>
         </div>
 
-        <div className="rounded-2xl bg-[#FFF3F6] px-4 py-3 text-sm font-black text-[#755F67]">
-          <Package size={18} className="mr-2 inline" />
-          {formatoNumero(totalProductos)} resultado(s)
-        </div>
+        <span className="shrink-0 rounded-full bg-[#FFF3F6] px-3 py-1.5 text-xs font-black text-[#A84E6C]">
+          {formatoNumero(totalProductos)}
+        </span>
       </div>
 
-      <div className="p-4 sm:p-5">
+      <div className="p-3 sm:p-4">
         {cargando ? (
           <EstadoTabla
             icono={<Loader2 size={22} className="animate-spin" />}
@@ -2546,7 +2585,7 @@ function ProductosDisponibles({
           <EstadoTabla texto="No hay productos con stock disponible." />
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-4">
               {productosPagina.map((item) => (
                 <ProductoCard
                   key={`${item.id_inventario || item.id_producto}-${item.id_variante || 'sin-variante'}`}
@@ -2562,9 +2601,9 @@ function ProductosDisponibles({
             </div>
 
             {totalProductos > PRODUCTOS_POR_PAGINA && (
-              <div className="mt-5 flex items-center justify-between rounded-2xl bg-[#FFF9FA] p-3">
-                <p className="text-sm font-bold text-[#8B7A80]">
-                  Página {paginaActual} de {totalPaginas}
+              <div className="mt-4 flex items-center justify-between rounded-2xl bg-[#FFF9FA] p-2.5">
+                <p className="text-xs font-bold text-[#8B7A80]">
+                  {paginaActual} / {totalPaginas}
                 </p>
 
                 <div className="flex gap-2">
@@ -2572,7 +2611,7 @@ function ProductosDisponibles({
                     type="button"
                     onClick={() => setPaginaActual((pagina) => Math.max(pagina - 1, 1))}
                     disabled={paginaActual === 1}
-                    className="rounded-xl border border-[#EEDFE4] bg-white px-4 py-2 text-sm font-black text-[#755F67] disabled:opacity-40"
+                    className="min-h-10 rounded-xl border border-[#EEDFE4] bg-white px-3 text-xs font-black text-[#755F67] disabled:opacity-40"
                   >
                     Anterior
                   </button>
@@ -2580,7 +2619,7 @@ function ProductosDisponibles({
                     type="button"
                     onClick={() => setPaginaActual((pagina) => Math.min(pagina + 1, totalPaginas))}
                     disabled={paginaActual === totalPaginas}
-                    className="rounded-xl bg-[#B85F7D] px-4 py-2 text-sm font-black text-white disabled:opacity-40"
+                    className="min-h-10 rounded-xl bg-[#B85F7D] px-3 text-xs font-black text-white disabled:opacity-40"
                   >
                     Siguiente
                   </button>
@@ -2616,63 +2655,63 @@ function ProductoCard({
   ].filter(Boolean);
 
   return (
-    <article className="group rounded-3xl border border-[#F0E2E7] bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[#E2B8C6] hover:shadow-md">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="break-words text-base font-black leading-snug text-[#392F33]">
-            {item.producto || item.nombre}
-          </h3>
-          <p className="mt-1 break-words text-xs font-semibold text-[#9A858D]">
-            {atributos.length > 0 ? atributos.join(' · ') : 'Producto sin atributos adicionales'}
-          </p>
+    <article className="flex min-h-[190px] min-w-0 flex-col rounded-3xl border border-[#F0E2E7] bg-white p-3 shadow-sm transition active:scale-[0.99] sm:p-4">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-wide text-[#A68F97]">
+              {item.categoria || 'Prenda'}
+            </p>
+            <h3 className="mt-0.5 line-clamp-2 text-sm font-black leading-snug text-[#392F33] sm:text-base">
+              {item.producto || item.nombre}
+            </h3>
+          </div>
+
+          {oferta && (
+            <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-1 text-[9px] font-black text-emerald-700">
+              -{formatoNumero(item.porcentaje_descuento)}%
+            </span>
+          )}
         </div>
 
-        <div className="shrink-0 rounded-2xl bg-[#FFF0F4] px-3 py-2 text-right">
+        <p className="mt-2 line-clamp-2 text-[11px] font-semibold leading-relaxed text-[#9A858D]">
+          {atributos.length > 0 ? atributos.join(' · ') : item.codigo_barras || 'Sin detalles adicionales'}
+        </p>
+
+        <div className="mt-3">
           {oferta && (
-            <p className="text-[11px] font-bold text-[#B5A1A8] line-through">
+            <p className="text-[10px] font-bold text-[#B5A1A8] line-through">
               {formatoMoneda(item.precio_venta)}
             </p>
           )}
-          <p className="text-base font-black text-[#B85F7D]">
+          <p className="text-xl font-black tracking-tight text-[#B85F7D]">
             {formatoMoneda(precioFinal)}
           </p>
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {controlaLotes && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-[#FFF0F4] px-2.5 py-1 text-[11px] font-black text-[#A84E6C]">
-            <Layers3 size={12} />
-            Control por lote
-          </span>
-        )}
-        {oferta && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-black text-emerald-700">
-            <BadgePercent size={12} />
-            Oferta -{formatoNumero(item.porcentaje_descuento)}%
-          </span>
-        )}
-      </div>
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <span className="inline-flex min-w-0 items-center gap-1 rounded-xl bg-[#FFFAFB] px-2 py-1.5 text-[10px] font-black text-[#755F67]">
+          <Package size={12} />
+          {formatoNumero(item.stock_actual)}
+        </span>
 
-      <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-        <div className="rounded-2xl bg-[#FFFAFB] p-3">
-          <p className="text-[11px] font-bold uppercase text-[#A68F97]">Código</p>
-          <p className="mt-1 truncate font-black text-[#5B4950]">{item.codigo_barras || '—'}</p>
-        </div>
-        <div className="rounded-2xl bg-[#FFFAFB] p-3 text-center">
-          <p className="text-[11px] font-bold uppercase text-[#A68F97]">Stock</p>
-          <p className="mt-1 font-black text-[#392F33]">{formatoNumero(item.stock_actual)}</p>
-        </div>
+        {controlaLotes && (
+          <span className="inline-flex items-center gap-1 rounded-xl bg-[#FFF0F4] px-2 py-1.5 text-[9px] font-black text-[#A84E6C]">
+            <Layers3 size={11} />
+            Lote
+          </span>
+        )}
       </div>
 
       <button
         type="button"
         onClick={() => agregarAlCarrito(item)}
         disabled={!sesionAbierta}
-        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#B85F7D] px-4 py-3 text-sm font-black text-white transition hover:bg-[#A84E6C] disabled:cursor-not-allowed disabled:bg-[#E9DDE1] disabled:text-[#A38F96]"
+        className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-2xl bg-[#B85F7D] px-3 py-2.5 text-xs font-black text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E9DDE1] disabled:text-[#A38F96]"
       >
-        <Plus size={18} />
-        {controlaLotes ? 'Elegir lote y agregar' : 'Agregar al carrito'}
+        <Plus size={17} />
+        {controlaLotes ? 'Elegir' : 'Agregar'}
       </button>
     </article>
   );
@@ -2680,11 +2719,11 @@ function ProductoCard({
 
 function EstadoTabla({ texto, icono = null }) {
   return (
-    <div className="flex min-h-[220px] flex-col items-center justify-center rounded-3xl bg-[#FFFAFB] p-8 text-center text-[#8B7A80]">
+    <div className="flex min-h-[190px] flex-col items-center justify-center rounded-3xl bg-[#FFFAFB] p-6 text-center text-[#8B7A80]">
       <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#B85F7D] shadow-sm">
         {icono || <Package size={22} />}
       </div>
-      <p className="font-black">{texto}</p>
+      <p className="text-sm font-black">{texto}</p>
     </div>
   );
 }
@@ -2729,68 +2768,125 @@ function CarritoPOS({
   puedeEnviarTicketDigital,
   configuracionCorreoSmtp,
   cargandoConfiguracionCorreo,
+  sesionAbierta,
+  modoMovil = false,
+  onCerrar = null,
 }) {
+  const [mostrarOpciones, setMostrarOpciones] = useState(false);
+
+  const cantidadPrendas = carrito.reduce(
+    (total, item) => total + Number(item.cantidad || 0),
+    0
+  );
+
+  const metodosPrincipales = METODOS_PAGO_POS.filter((metodo) =>
+    ['EFECTIVO', 'TARJETA', 'TRANSFERENCIA'].includes(metodo.id)
+  );
+
+  const montosRapidos = useMemo(() => {
+    const total = Math.ceil(Number(resumen.total || 0));
+    if (total <= 0) return [];
+
+    const candidatos = [total, 50, 100, 200, 500, 1000, 2000];
+    return [...new Set(candidatos.filter((monto) => monto >= total))].slice(0, 4);
+  }, [resumen.total]);
+
   return (
-    <aside className="min-w-0 overflow-hidden rounded-[2rem] border border-[#F0E2E7] bg-white shadow-sm xl:sticky xl:top-5 xl:max-h-[calc(100vh-2.5rem)] xl:overflow-y-auto">
-      <div className="border-b border-[#F1E4E8] bg-[#B85F7D] px-4 py-5 text-white sm:px-5">
-        <p className="text-xs font-black uppercase tracking-wide text-white/70">Venta actual</p>
-        <div className="mt-1 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-black">Cobrar venta</h2>
-            <p className="text-sm text-white/75">{carrito.length} producto(s)</p>
+    <aside
+      className={`min-w-0 overflow-hidden bg-white ${
+        modoMovil
+          ? 'rounded-t-[2rem]'
+          : 'rounded-[1.75rem] border border-[#F0E2E7] shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto'
+      }`}
+    >
+      <div className="bg-[#B85F7D] px-4 py-4 text-white sm:px-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-wider text-white/70">
+              Tu venta
+            </p>
+            <div className="mt-1 flex items-baseline gap-2">
+              <p className="text-2xl font-black tracking-tight">
+                {formatoMoneda(resumen.total)}
+              </p>
+              <span className="text-xs font-bold text-white/70">
+                {cantidadPrendas} prenda(s)
+              </span>
+            </div>
           </div>
-          <div className="rounded-2xl bg-white/15 p-3">
-            <ReceiptText size={24} />
-          </div>
+
+          {modoMovil && onCerrar ? (
+            <button
+              type="button"
+              onClick={onCerrar}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white"
+              aria-label="Cerrar venta"
+            >
+              <X size={20} />
+            </button>
+          ) : (
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
+              <ReceiptText size={20} />
+            </div>
+          )}
         </div>
       </div>
 
-      <section className="border-b border-[#F4EAED] p-4 sm:p-5">
+      <section className="border-b border-[#F4EAED] p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-black text-[#392F33]">Productos agregados</p>
-            <p className="text-xs font-semibold text-[#9A858D]">Revisa cantidades antes de cobrar.</p>
+            <p className="text-sm font-black text-[#392F33]">Productos</p>
+            <p className="text-xs font-semibold text-[#9A858D]">
+              Revisa antes de cobrar.
+            </p>
           </div>
+
           {carrito.length > 0 && (
             <button
               type="button"
               onClick={limpiarVenta}
-              className="rounded-xl bg-[#FFF0F4] px-3 py-2 text-xs font-black text-[#A84E6C] transition hover:bg-red-100 hover:text-red-700"
+              className="rounded-xl bg-[#FFF0F4] px-3 py-2 text-[11px] font-black text-[#A84E6C]"
             >
-              Limpiar
+              Vaciar
             </button>
           )}
         </div>
 
         {carrito.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-[#E5D5DA] bg-[#FFFAFB] p-6 text-center">
-            <ShoppingCart className="mx-auto text-[#BDA8AF]" size={30} />
-            <p className="mt-3 font-black text-[#5B4950]">Carrito vacío</p>
-            <p className="mt-1 text-sm text-[#9A858D]">Agrega productos desde el inventario.</p>
+          <div className="rounded-3xl border border-dashed border-[#E5D5DA] bg-[#FFFAFB] p-5 text-center">
+            <ShoppingCart className="mx-auto text-[#BDA8AF]" size={28} />
+            <p className="mt-2 text-sm font-black text-[#5B4950]">Aún no agregas prendas</p>
+            <p className="mt-1 text-xs text-[#9A858D]">Toca “Agregar” en un producto.</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {carrito.map((item) => (
-              <div key={item.key_carrito} className="rounded-3xl border border-[#F0E2E7] bg-white p-3 shadow-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="break-words text-sm font-black text-[#392F33]">{item.nombre}</p>
-                    <p className="mt-1 text-xs font-semibold text-[#9A858D]">
-                      {item.id_lote
-                        ? `Lote ${item.lote || '—'} · Cad. ${formatoFechaCorta(item.fecha_caducidad)}`
-                        : [item.marca, item.presentacion, item.color, item.talla, item.tono].filter(Boolean).join(' · ') || 'Sin lote'}
+              <div
+                key={item.key_carrito}
+                className="rounded-2xl border border-[#F0E2E7] bg-white p-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 text-sm font-black text-[#392F33]">
+                      {item.nombre}
                     </p>
-                    <p className="mt-1 text-xs font-bold text-[#B85F7D]">
+                    <p className="mt-1 text-xs font-black text-[#B85F7D]">
                       {formatoMoneda(item.precio_venta)} c/u
                     </p>
+                    {item.id_lote && (
+                      <p className="mt-1 truncate text-[10px] font-semibold text-[#9A858D]">
+                        Lote {item.lote || '—'} · Cad. {formatoFechaCorta(item.fecha_caducidad)}
+                      </p>
+                    )}
                   </div>
 
                   <button
                     type="button"
                     onClick={() => quitarDelCarrito(item.key_carrito)}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600 transition hover:bg-red-100"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600"
+                    aria-label="Quitar producto"
                   >
-                    <Trash2 size={17} />
+                    <Trash2 size={16} />
                   </button>
                 </div>
 
@@ -2805,10 +2901,11 @@ function CarritoPOS({
                     </button>
                     <input
                       type="number"
+                      inputMode="numeric"
                       min="0"
                       value={item.cantidad}
                       onChange={(e) => cambiarCantidadManual(item.key_carrito, e.target.value)}
-                      className="h-9 w-16 bg-transparent text-center text-sm font-black text-[#392F33] outline-none"
+                      className="h-9 w-12 bg-transparent text-center text-sm font-black text-[#392F33] outline-none"
                     />
                     <button
                       type="button"
@@ -2819,262 +2916,379 @@ function CarritoPOS({
                     </button>
                   </div>
 
-                  <div className="text-right">
-                    <p className="text-[11px] font-bold uppercase text-[#A68F97]">Importe</p>
-                    <p className="text-base font-black text-[#392F33]">
-                      {formatoMoneda(Number(item.cantidad || 0) * Number(item.precio_venta || 0))}
-                    </p>
-                  </div>
+                  <p className="text-base font-black text-[#392F33]">
+                    {formatoMoneda(Number(item.cantidad || 0) * Number(item.precio_venta || 0))}
+                  </p>
                 </div>
-
-                {item.tiene_oferta && (
-                  <div className="mt-3">
-                    <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-700">
-                      Oferta
-                    </span>
-                  </div>
-                )}
               </div>
             ))}
           </div>
         )}
       </section>
 
-      <section className="border-b border-[#F4EAED] p-4 sm:p-5">
-        <div className="mb-3 flex items-center gap-2">
-          <UserCheck size={18} className="text-[#B85F7D]" />
-          <p className="text-sm font-black text-[#392F33]">Cliente / puntos</p>
-        </div>
+      {/* Lo frecuente queda visible. Lo avanzado se mantiene disponible sin saturar. */}
+      <section className="border-b border-[#F4EAED] p-4">
+        <p className="mb-3 text-sm font-black text-[#392F33]">¿Cómo pagaron?</p>
 
-        {!tarjetaPuntos ? (
-          <div className="space-y-3">
+        {!pagoMixtoActivo && (
+          <div className="grid grid-cols-3 gap-2">
+            {metodosPrincipales.map((metodo) => {
+              const Icono = metodo.icono;
+              const activo = metodoPago === metodo.id;
+
+              return (
+                <button
+                  key={metodo.id}
+                  type="button"
+                  onClick={() => seleccionarMetodoPago(metodo.id)}
+                  className={`flex min-h-[68px] flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-2 text-[10px] font-black transition sm:text-xs ${
+                    activo
+                      ? 'bg-[#B85F7D] text-white shadow-md shadow-[#B85F7D]/15'
+                      : 'bg-[#FFF0F4] text-[#755F67]'
+                  }`}
+                >
+                  <Icono size={20} />
+                  {metodo.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {!pagoMixtoActivo && metodoPago === 'EFECTIVO' && (
+          <div className="mt-4">
+            <label className="mb-2 block text-[11px] font-black uppercase tracking-wide text-[#9A858D]">
+              ¿Con cuánto paga?
+            </label>
             <div className="relative">
-              <Barcode className="absolute left-4 top-3.5 text-[#B6A3AA]" size={18} />
+              <span className="absolute left-4 top-3.5 text-lg font-black text-[#B85F7D]">$</span>
               <input
-                value={codigoTarjeta}
-                onChange={(e) => setCodigoTarjeta(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') buscarTarjetaPuntos();
-                }}
-                className="w-full rounded-2xl border border-[#EEDFE4] bg-[#FFFAFB] py-3 pl-11 pr-4 text-sm font-semibold outline-none focus:bg-white focus:ring-2 focus:ring-[#E5AFC0]"
-                placeholder="Tarjeta o teléfono del cliente"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={montoRecibido}
+                onChange={(e) => setMontoRecibido(e.target.value)}
+                className="w-full rounded-2xl border border-[#EEDFE4] bg-[#FFFAFB] py-3 pl-9 pr-4 text-xl font-black text-[#392F33] outline-none focus:ring-2 focus:ring-[#E5AFC0]"
+                placeholder="0.00"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => buscarTarjetaPuntos()}
-                disabled={buscandoTarjeta}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B85F7D] px-4 py-3 text-xs font-black text-white disabled:opacity-60"
-              >
-                {buscandoTarjeta ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-                Buscar
-              </button>
-              <button
-                type="button"
-                onClick={abrirEscanerTarjeta}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#FFF0F4] px-4 py-3 text-xs font-black text-[#A84E6C]"
-              >
-                <Barcode size={16} />
-                Escanear
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-3xl border border-emerald-100 bg-emerald-50 p-4 text-emerald-900">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="font-black">{tarjetaPuntos.nombre_cliente}</p>
-                <p className="mt-1 text-xs font-semibold text-emerald-700">{tarjetaPuntos.codigo_barras}</p>
-                <p className="mt-2 text-sm font-black">{formatoNumero(tarjetaPuntos.puntos_actuales)} puntos disponibles</p>
+            {montosRapidos.length > 0 && (
+              <div className="mt-2 grid grid-cols-4 gap-1.5">
+                {montosRapidos.map((monto) => (
+                  <button
+                    key={monto}
+                    type="button"
+                    onClick={() => setMontoRecibido(String(monto))}
+                    className="rounded-xl bg-[#FFF0F4] px-1 py-2 text-[10px] font-black text-[#A84E6C] sm:text-xs"
+                  >
+                    ${formatoNumero(monto)}
+                  </button>
+                ))}
               </div>
-              <button
-                type="button"
-                onClick={quitarTarjetaPuntos}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-emerald-700"
-              >
-                <X size={17} />
-              </button>
-            </div>
-
-            {puntosClienteActivo && (
-              <p className="mt-3 text-xs font-bold text-emerald-700">
-                Esta venta puede generar aproximadamente {formatoNumero(resumen.puntosEstimados)} puntos ({porcentajeClientePuntos}%).
-              </p>
             )}
 
-            <div className="mt-3 rounded-2xl bg-white/70 p-3">
-              <div className="flex items-center gap-2">
-                <Mail size={17} className="text-emerald-700" />
-                <p className="text-xs font-black text-emerald-900">Ticket digital</p>
+            <div
+              className={`mt-3 rounded-2xl px-4 py-3 ${
+                resumen.cambio >= 0
+                  ? 'bg-emerald-50 text-emerald-700'
+                  : 'bg-amber-50 text-amber-800'
+              }`}
+            >
+              <p className="text-[10px] font-black uppercase tracking-wide opacity-70">
+                {resumen.cambio >= 0 ? 'Cambio' : 'Falta por recibir'}
+              </p>
+              <p className="text-2xl font-black">
+                {formatoMoneda(
+                  resumen.cambio >= 0 ? resumen.cambio : Math.abs(resumen.cambio)
+                )}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!pagoMixtoActivo && metodoPago === 'PUNTOS' && (
+          <div
+            className={`mt-4 rounded-2xl px-4 py-3 text-sm font-black ${
+              resumen.puedePagarConPuntos
+                ? 'bg-emerald-50 text-emerald-700'
+                : 'bg-red-50 text-red-700'
+            }`}
+          >
+            {tarjetaPuntos
+              ? resumen.puedePagarConPuntos
+                ? `Puntos disponibles: ${formatoNumero(resumen.puntosDisponibles)}`
+                : `Faltan ${formatoNumero(resumen.puntosFaltantes)} puntos`
+              : 'Vincula una tarjeta para pagar con puntos'}
+          </div>
+        )}
+      </section>
+
+      <section className="border-b border-[#F4EAED] p-4">
+        <button
+          type="button"
+          onClick={() => setMostrarOpciones((actual) => !actual)}
+          className="flex w-full items-center justify-between gap-3 rounded-2xl bg-[#FFFAFB] px-4 py-3 text-left"
+        >
+          <div>
+            <p className="text-sm font-black text-[#392F33]">Más opciones</p>
+            <p className="text-xs font-semibold text-[#9A858D]">
+              Cliente, puntos, pago mixto e IVA.
+            </p>
+          </div>
+          <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-[#A84E6C] shadow-sm">
+            {mostrarOpciones ? 'Ocultar' : 'Ver'}
+          </span>
+        </button>
+
+        {mostrarOpciones && (
+          <div className="mt-3 space-y-3">
+            <div className="rounded-3xl border border-[#F0E2E7] bg-white p-3">
+              <div className="mb-3 flex items-center gap-2">
+                <UserCheck size={17} className="text-[#B85F7D]" />
+                <p className="text-sm font-black text-[#392F33]">Cliente / puntos</p>
               </div>
 
-              <p className="mt-1 break-all text-xs text-emerald-700">
-                {tieneCorreoTicketDigital ? correoTicketDigital : 'El cliente no tiene un correo válido registrado.'}
-              </p>
+              {!tarjetaPuntos ? (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Barcode className="absolute left-4 top-3.5 text-[#B6A3AA]" size={17} />
+                    <input
+                      value={codigoTarjeta}
+                      onChange={(e) => setCodigoTarjeta(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') buscarTarjetaPuntos();
+                      }}
+                      className="w-full rounded-2xl border border-[#EEDFE4] bg-[#FFFAFB] py-3 pl-11 pr-4 text-sm font-semibold outline-none focus:bg-white focus:ring-2 focus:ring-[#E5AFC0]"
+                      placeholder="Tarjeta o teléfono"
+                    />
+                  </div>
 
-              <label className="mt-3 flex items-center gap-2 text-xs font-bold text-emerald-900">
-                <input
-                  type="checkbox"
-                  checked={enviarTicketDigital}
-                  onChange={(e) => setEnviarTicketDigital(e.target.checked)}
-                  disabled={!puedeEnviarTicketDigital || cargandoConfiguracionCorreo}
-                />
-                Enviar ticket por correo
-              </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => buscarTarjetaPuntos()}
+                      disabled={buscandoTarjeta}
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#B85F7D] px-3 text-xs font-black text-white disabled:opacity-60"
+                    >
+                      {buscandoTarjeta ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Search size={16} />
+                      )}
+                      Buscar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={abrirEscanerTarjeta}
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#FFF0F4] px-3 text-xs font-black text-[#A84E6C]"
+                    >
+                      <Barcode size={16} />
+                      Escanear
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-900">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black">{tarjetaPuntos.nombre_cliente}</p>
+                      <p className="mt-1 text-xs font-black text-emerald-700">
+                        {formatoNumero(tarjetaPuntos.puntos_actuales)} puntos
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={quitarTarjetaPuntos}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-700"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
 
-              {!configuracionCorreoSmtp?.activo && !cargandoConfiguracionCorreo && (
-                <p className="mt-2 text-[11px] font-semibold text-amber-700">
-                  El envío de tickets no está activo para esta sucursal.
+                  {puntosClienteActivo && (
+                    <p className="mt-2 text-[11px] font-bold text-emerald-700">
+                      Esta venta puede generar {formatoNumero(resumen.puntosEstimados)} puntos ({porcentajeClientePuntos}%).
+                    </p>
+                  )}
+
+                  {!pagoMixtoActivo && (
+                    <button
+                      type="button"
+                      onClick={() => seleccionarMetodoPago('PUNTOS')}
+                      className={`mt-3 w-full rounded-2xl px-3 py-2.5 text-xs font-black ${
+                        metodoPago === 'PUNTOS'
+                          ? 'bg-emerald-700 text-white'
+                          : 'bg-white text-emerald-800'
+                      }`}
+                    >
+                      {metodoPago === 'PUNTOS' ? 'Pago con puntos seleccionado' : 'Pagar con puntos'}
+                    </button>
+                  )}
+
+                  <div className="mt-3 rounded-2xl bg-white/70 p-3">
+                    <div className="flex items-center gap-2">
+                      <Mail size={16} className="text-emerald-700" />
+                      <p className="text-xs font-black text-emerald-900">Ticket digital</p>
+                    </div>
+                    <p className="mt-1 break-all text-[11px] text-emerald-700">
+                      {tieneCorreoTicketDigital
+                        ? correoTicketDigital
+                        : 'El cliente no tiene un correo válido registrado.'}
+                    </p>
+                    <label className="mt-2 flex items-center gap-2 text-[11px] font-bold text-emerald-900">
+                      <input
+                        type="checkbox"
+                        checked={enviarTicketDigital}
+                        onChange={(e) => setEnviarTicketDigital(e.target.checked)}
+                        disabled={!puedeEnviarTicketDigital || cargandoConfiguracionCorreo}
+                      />
+                      Enviar ticket por correo
+                    </label>
+                    {!configuracionCorreoSmtp?.activo && !cargandoConfiguracionCorreo && (
+                      <p className="mt-1 text-[10px] font-semibold text-amber-700">
+                        El envío de tickets no está activo para esta sucursal.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-3xl border border-[#F0E2E7] bg-white p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-[#392F33]">Pago mixto</p>
+                  <p className="text-xs font-semibold text-[#9A858D]">
+                    Combina varios métodos.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={alternarPagoMixto}
+                  className={`relative h-8 w-14 shrink-0 rounded-full transition ${
+                    pagoMixtoActivo ? 'bg-[#B85F7D]' : 'bg-[#D8C8CD]'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition ${
+                      pagoMixtoActivo ? 'left-7' : 'left-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {pagoMixtoActivo && (
+                <div className="mt-3 space-y-2">
+                  {METODOS_PAGO_POS.map((metodo) => {
+                    const Icono = metodo.icono;
+                    const deshabilitado = metodo.id === 'PUNTOS' && !tarjetaPuntos;
+
+                    return (
+                      <div
+                        key={metodo.id}
+                        className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF0F4] text-[#B85F7D]">
+                          <Icono size={17} />
+                        </div>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          min="0"
+                          step="0.01"
+                          disabled={deshabilitado}
+                          value={pagosMixtos[metodo.id] || ''}
+                          onChange={(e) => actualizarPagoMixto(metodo.id, e.target.value)}
+                          className="w-full rounded-xl border border-[#EEDFE4] bg-[#FFFAFB] px-3 py-2.5 text-sm font-black text-[#392F33] outline-none focus:ring-2 focus:ring-[#E5AFC0] disabled:opacity-50"
+                          placeholder={`${metodo.label}: 0.00`}
+                        />
+                      </div>
+                    );
+                  })}
+
+                  <div className="space-y-1.5 rounded-2xl bg-[#FFFAFB] p-3">
+                    <ResumenLinea
+                      label="Total pagado"
+                      valor={formatoMoneda(resumenPagosMixtos.totalPagado)}
+                    />
+                    <ResumenLinea
+                      label="Pendiente"
+                      valor={formatoMoneda(resumenPagosMixtos.pendiente)}
+                      destacado={resumenPagosMixtos.pendiente > 0 ? 'red' : null}
+                    />
+                    <ResumenLinea
+                      label="Cambio"
+                      valor={formatoMoneda(resumenPagosMixtos.cambio)}
+                      destacado="emerald"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-3xl border border-[#F0E2E7] bg-white p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-[#392F33]">Aplicar IVA 16%</p>
+                  <p className="text-xs font-semibold text-[#9A858D]">
+                    Solo cuando corresponda.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCobrarImpuesto(!cobrarImpuesto)}
+                  className={`relative h-8 w-14 shrink-0 rounded-full transition ${
+                    cobrarImpuesto ? 'bg-[#B85F7D]' : 'bg-[#D8C8CD]'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition ${
+                      cobrarImpuesto ? 'left-7' : 'left-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="sticky bottom-0 border-t border-[#F0E2E7] bg-white p-4 shadow-[0_-8px_24px_rgba(72,46,55,0.05)]">
+        <div className="mb-3 rounded-2xl bg-[#FFFAFB] p-3">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-black text-[#8B7A80]">Total a cobrar</p>
+              {resumen.descuentoOfertas > 0 && (
+                <p className="mt-0.5 text-[10px] font-bold text-emerald-700">
+                  Ahorras {formatoMoneda(resumen.descuentoOfertas)}
+                </p>
+              )}
+              {cobrarImpuesto && (
+                <p className="mt-0.5 text-[10px] font-bold text-[#A84E6C]">
+                  Incluye IVA: {formatoMoneda(resumen.impuesto)}
                 </p>
               )}
             </div>
-          </div>
-        )}
-      </section>
-
-      <section className="border-b border-[#F4EAED] p-4 sm:p-5">
-        <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl bg-[#FFFAFB] p-3">
-          <div>
-            <p className="text-sm font-black text-[#392F33]">Pago mixto</p>
-            <p className="text-xs font-semibold text-[#9A858D]">Combina varios métodos de pago.</p>
-          </div>
-          <button
-            type="button"
-            onClick={alternarPagoMixto}
-            className={`relative h-8 w-14 shrink-0 rounded-full transition ${pagoMixtoActivo ? 'bg-[#B85F7D]' : 'bg-[#D8C8CD]'}`}
-          >
-            <span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition ${pagoMixtoActivo ? 'left-7' : 'left-1'}`} />
-          </button>
-        </div>
-
-        {!pagoMixtoActivo ? (
-          <>
-            <p className="mb-3 text-sm font-black text-[#392F33]">Método de pago</p>
-            <div className="grid grid-cols-2 gap-2">
-              {METODOS_PAGO_POS.map((metodo) => {
-                const Icono = metodo.icono;
-                const activo = metodoPago === metodo.id;
-
-                return (
-                  <button
-                    key={metodo.id}
-                    type="button"
-                    onClick={() => seleccionarMetodoPago(metodo.id)}
-                    className={`flex items-center justify-center gap-2 rounded-2xl px-3 py-3 text-xs font-black transition ${activo ? 'bg-[#B85F7D] text-white' : 'bg-[#FFF0F4] text-[#755F67]'}`}
-                  >
-                    <Icono size={16} />
-                    {metodo.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {metodoPago === 'EFECTIVO' && (
-              <div className="mt-4">
-                <label className="mb-2 block text-xs font-black uppercase tracking-wide text-[#9A858D]">Monto recibido</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={montoRecibido}
-                  onChange={(e) => setMontoRecibido(e.target.value)}
-                  className="w-full rounded-2xl border border-[#EEDFE4] bg-[#FFFAFB] px-4 py-3 text-lg font-black text-[#392F33] outline-none focus:ring-2 focus:ring-[#E5AFC0]"
-                  placeholder="0.00"
-                />
-                <div className={`mt-3 rounded-2xl px-4 py-3 text-2xl font-black ${resumen.cambio >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-                  Cambio: {formatoMoneda(resumen.cambio)}
-                </div>
-              </div>
-            )}
-
-            {metodoPago === 'PUNTOS' && (
-              <div className={`mt-4 rounded-2xl px-4 py-3 text-sm font-black ${resumen.puedePagarConPuntos ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-                {tarjetaPuntos
-                  ? resumen.puedePagarConPuntos
-                    ? `Puntos suficientes: ${formatoNumero(resumen.puntosDisponibles)}`
-                    : `Faltan ${formatoNumero(resumen.puntosFaltantes)} puntos`
-                  : 'Vincula una tarjeta para pagar con puntos'}
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="space-y-3">
-            {METODOS_PAGO_POS.map((metodo) => {
-              const Icono = metodo.icono;
-              const deshabilitado = metodo.id === 'PUNTOS' && !tarjetaPuntos;
-
-              return (
-                <div key={metodo.id} className="rounded-2xl border border-[#F0E2E7] bg-white p-3">
-                  <div className="mb-2 flex items-center gap-2">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF0F4] text-[#B85F7D]">
-                      <Icono size={17} />
-                    </div>
-                    <p className="text-sm font-black text-[#392F33]">{metodo.label}</p>
-                  </div>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    disabled={deshabilitado}
-                    value={pagosMixtos[metodo.id] || ''}
-                    onChange={(e) => actualizarPagoMixto(metodo.id, e.target.value)}
-                    className="w-full rounded-2xl border border-[#EEDFE4] bg-[#FFFAFB] px-4 py-3 text-base font-black text-[#392F33] outline-none focus:ring-2 focus:ring-[#E5AFC0] disabled:opacity-50"
-                    placeholder="0.00"
-                  />
-                </div>
-              );
-            })}
-
-            <div className="space-y-2 rounded-3xl bg-[#FFFAFB] p-4">
-              <ResumenLinea label="Total pagado" valor={formatoMoneda(resumenPagosMixtos.totalPagado)} />
-              <ResumenLinea label="Pendiente" valor={formatoMoneda(resumenPagosMixtos.pendiente)} destacado={resumenPagosMixtos.pendiente > 0 ? 'red' : null} />
-              <ResumenLinea label="Cambio" valor={formatoMoneda(resumenPagosMixtos.cambio)} destacado="emerald" />
-            </div>
-          </div>
-        )}
-      </section>
-
-      <section className="p-4 sm:p-5">
-        <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl bg-[#FFFAFB] p-3">
-          <div>
-            <p className="text-sm font-black text-[#392F33]">Aplicar IVA 16%</p>
-            <p className="text-xs font-semibold text-[#9A858D]">Actívalo cuando corresponda.</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setCobrarImpuesto(!cobrarImpuesto)}
-            className={`relative h-8 w-14 rounded-full transition ${cobrarImpuesto ? 'bg-[#B85F7D]' : 'bg-[#D8C8CD]'}`}
-          >
-            <span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition ${cobrarImpuesto ? 'left-7' : 'left-1'}`} />
-          </button>
-        </div>
-
-        <div className="space-y-2 rounded-3xl border border-[#F0E2E7] bg-white p-4">
-          <ResumenLinea label="Subtotal" valor={formatoMoneda(resumen.subtotal)} />
-          {resumen.descuentoOfertas > 0 && (
-            <ResumenLinea label="Descuento ofertas" valor={`-${formatoMoneda(resumen.descuentoOfertas)}`} destacado="emerald" />
-          )}
-          <ResumenLinea label="IVA" valor={formatoMoneda(resumen.impuesto)} />
-          <div className="my-3 border-t border-dashed border-[#EEDFE4]" />
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <p className="text-sm font-black text-[#8B7A80]">Total a cobrar</p>
-              <p className="text-xs font-semibold text-[#B5A1A8]">MXN</p>
-            </div>
-            <p className="text-3xl font-black tracking-tight text-[#392F33]">{formatoMoneda(resumen.total)}</p>
+            <p className="text-2xl font-black tracking-tight text-[#392F33]">
+              {formatoMoneda(resumen.total)}
+            </p>
           </div>
         </div>
 
         <button
           type="button"
           onClick={cobrarVenta}
-          disabled={cobrando || carrito.length === 0}
-          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-3xl bg-[#B85F7D] px-5 py-4 text-base font-black text-white shadow-lg shadow-[#B85F7D]/20 transition hover:bg-[#A84E6C] disabled:cursor-not-allowed disabled:bg-[#D8C8CD]"
+          disabled={cobrando || carrito.length === 0 || !sesionAbierta}
+          className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#B85F7D] px-5 py-4 text-base font-black text-white shadow-lg shadow-[#B85F7D]/20 transition active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-[#D8C8CD]"
         >
-          {cobrando ? <Loader2 size={21} className="animate-spin" /> : <CheckCircle size={21} />}
-          {cobrando ? 'Cobrando...' : 'Cobrar venta'}
+          {cobrando ? (
+            <Loader2 size={21} className="animate-spin" />
+          ) : (
+            <CheckCircle size={21} />
+          )}
+          {cobrando ? 'Cobrando...' : `Cobrar ${formatoMoneda(resumen.total)}`}
         </button>
       </section>
     </aside>
@@ -3090,7 +3304,7 @@ function ResumenLinea({ label, valor, destacado = null }) {
         : 'text-[#392F33]';
 
   return (
-    <div className="flex items-center justify-between gap-3 text-sm">
+    <div className="flex items-center justify-between gap-3 text-xs">
       <span className="font-bold text-[#8B7A80]">{label}</span>
       <span className={`font-black ${color}`}>{valor}</span>
     </div>

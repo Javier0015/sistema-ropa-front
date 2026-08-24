@@ -17,6 +17,7 @@ import {
   Loader2,
   FileSpreadsheet,
   Sparkles,
+  MoreHorizontal,
 } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
@@ -195,7 +196,7 @@ function ProductoSearchSelect({
     <div className="relative">
       <div className="relative">
         <Search
-          className="absolute left-4 top-3.5 text-slate-400"
+          className="absolute left-4 top-3.5 text-[#B09CA3]"
           size={20}
         />
 
@@ -222,7 +223,7 @@ function ProductoSearchSelect({
               setAbierto(false);
             }
           }}
-          className="w-full min-w-0 pl-12 pr-12 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2] bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
+          className="w-full min-w-0 pl-12 pr-12 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2] bg-white disabled:bg-[#FFF9FA] disabled:cursor-not-allowed"
           placeholder={placeholder}
         />
 
@@ -230,7 +231,7 @@ function ProductoSearchSelect({
           <button
             type="button"
             onClick={limpiarSeleccion}
-            className="absolute right-3 top-2.5 flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200"
+            className="absolute right-3 top-2.5 flex h-8 w-8 items-center justify-center rounded-xl bg-[#FFF9FA] text-[#8B7A80] hover:bg-[#F7EEF1]"
           >
             <X size={17} />
           </button>
@@ -238,9 +239,9 @@ function ProductoSearchSelect({
       </div>
 
       {abierto && !disabled && (
-        <div className="absolute left-0 right-0 top-full z-[80] mt-2 overflow-hidden rounded-2xl border border-[#EEDFE4] bg-white shadow-2xl shadow-slate-900/15">
+        <div className="absolute left-0 right-0 top-full z-[80] mt-2 overflow-hidden rounded-2xl border border-[#EEDFE4] bg-white shadow-2xl shadow-[#392F33]/10">
           {opcionesFiltradas.length === 0 ? (
-            <div className="px-4 py-3 text-sm font-semibold text-slate-500">
+            <div className="px-4 py-3 text-sm font-semibold text-[#8B7A80]">
               {emptyText}
             </div>
           ) : (
@@ -259,7 +260,7 @@ function ProductoSearchSelect({
                     }}
                     className={`flex w-full items-start justify-between gap-4 px-4 py-3 text-left transition ${seleccionado
                       ? 'bg-[#FFF2F5] text-[#9E4966]'
-                      : 'hover:bg-[#FFFAFB] text-slate-700'
+                      : 'hover:bg-[#FFFAFB] text-[#5B4950]'
                       }`}
                   >
                     <div className="min-w-0">
@@ -268,14 +269,14 @@ function ProductoSearchSelect({
                       </p>
 
                       {getSubtitle && (
-                        <p className="mt-0.5 text-xs font-semibold text-slate-500">
+                        <p className="mt-0.5 text-xs font-semibold text-[#8B7A80]">
                           {getSubtitle(item)}
                         </p>
                       )}
                     </div>
 
                     {getRightText && (
-                      <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
+                      <span className="shrink-0 rounded-full bg-[#FFF9FA] px-3 py-1 text-xs font-black text-[#755F67]">
                         {getRightText(item)}
                       </span>
                     )}
@@ -334,6 +335,7 @@ export default function Inventario() {
   const [modalLotes, setModalLotes] = useState(false);
   const [modalCaducidad, setModalCaducidad] = useState(false);
   const [modalEditarLote, setModalEditarLote] = useState(false);
+  const [productoAcciones, setProductoAcciones] = useState(null);
 
   const [formAsignar, setFormAsignar] = useState(formAsignarInicial);
   const [formMovimiento, setFormMovimiento] = useState(formMovimientoInicial);
@@ -2221,348 +2223,318 @@ export default function Inventario() {
             </div>
           </div>
 
-          <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:flex xl:w-auto">
-            <button
-              type="button"
-              onClick={abrirBajoStock}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-50 px-5 py-3 font-black text-amber-700 transition hover:bg-amber-100"
-            >
-              <AlertTriangle size={18} />
-              Bajo stock
-            </button>
-
-            <button
-              type="button"
-              onClick={abrirCaducidad}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-50 px-5 py-3 font-black text-red-700 transition hover:bg-red-100"
-            >
-              <AlertTriangle size={18} />
-              Caducidad
-            </button>
-
-            <button
-              type="button"
-              onClick={abrirMovimientos}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#F4EFF8] px-5 py-3 font-black text-[#745D8A] transition hover:bg-[#ECE4F2]"
-            >
-              <History size={18} />
-              Movimientos
-            </button>
-
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <button
               type="button"
               onClick={abrirAsignar}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B85F7D] px-5 py-3 font-black text-white shadow-[0_12px_28px_rgba(184,95,125,0.22)] transition hover:-translate-y-0.5 hover:bg-[#A95270]"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B85F7D] px-5 py-3 font-black text-white shadow-[0_12px_28px_rgba(184,95,125,0.18)] transition hover:bg-[#A95270]"
             >
               <Plus size={19} />
-              Asignar stock
+              Agregar inventario
             </button>
 
-            <button
-              type="button"
-              onClick={exportarInventarioExcel}
-              disabled={!idSucursal || cargando || inventarioFiltrado.length === 0}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 px-5 py-3 font-black text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <FileSpreadsheet size={18} />
-              Exportar Excel
-            </button>
+            <details className="relative w-full sm:w-auto">
+              <summary className="flex cursor-pointer list-none items-center justify-center gap-2 rounded-2xl border border-[#EEDFE4] bg-[#FFF9FA] px-5 py-3 font-black text-[#755F67] transition hover:bg-[#FFF0F4] hover:text-[#B85F7D]">
+                <MoreHorizontal size={19} />
+                Más
+              </summary>
+
+              <div className="absolute right-0 top-[calc(100%+8px)] z-[90] grid w-full min-w-[230px] gap-1 rounded-2xl border border-[#F0E2E7] bg-white p-2 shadow-2xl shadow-[#392F33]/10 sm:w-64">
+                <button
+                  type="button"
+                  onClick={abrirBajoStock}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-[#5B4950] transition hover:bg-amber-50 hover:text-amber-700"
+                >
+                  <AlertTriangle size={17} />
+                  Bajo stock
+                </button>
+
+                <button
+                  type="button"
+                  onClick={abrirCaducidad}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-[#5B4950] transition hover:bg-red-50 hover:text-red-700"
+                >
+                  <AlertTriangle size={17} />
+                  Caducidad
+                </button>
+
+                <button
+                  type="button"
+                  onClick={abrirMovimientos}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-[#5B4950] transition hover:bg-[#FFF0F4] hover:text-[#B85F7D]"
+                >
+                  <History size={17} />
+                  Historial de movimientos
+                </button>
+
+                <button
+                  type="button"
+                  onClick={exportarInventarioExcel}
+                  disabled={!idSucursal || cargando || inventarioFiltrado.length === 0}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-[#5B4950] transition hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <FileSpreadsheet size={17} />
+                  Exportar Excel
+                </button>
+              </div>
+            </details>
           </div>
         </div>
 
-        <div className="relative z-40 mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
-          <div className="min-w-0">
-            <label className="block text-sm font-bold text-slate-700 mb-2">
-              Sucursal
-            </label>
+        <div className="relative z-40 mt-6 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-wide text-[#B85F7D]">
+                {sucursalActual?.nombre || 'Inventario'}
+              </p>
+              <p className="text-sm font-semibold text-[#8B7A80]">
+                Busca una prenda o filtra por categoría.
+              </p>
+            </div>
 
-            {puedeCambiarSucursal ? (
+            {puedeCambiarSucursal && (
               <select
                 value={idSucursal}
                 onChange={(e) => setIdSucursal(e.target.value)}
-                className="w-full min-w-0 px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2] bg-white"
+                className="min-w-[190px] rounded-2xl border border-[#EEDFE4] bg-white px-4 py-2.5 text-sm font-bold text-[#5B4950] outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
               >
                 <option value="">Selecciona sucursal</option>
                 {sucursales.map((sucursal) => (
-                  <option
-                    key={sucursal.id_sucursal}
-                    value={sucursal.id_sucursal}
-                  >
+                  <option key={sucursal.id_sucursal} value={sucursal.id_sucursal}>
                     {sucursal.nombre}
                   </option>
                 ))}
               </select>
-            ) : (
-              <div className="w-full min-w-0 px-4 py-3 rounded-2xl border border-[#EEDFE4] bg-[#FFFAFB] text-slate-700 font-semibold truncate">
-                {sucursalActual?.nombre ||
-                  sucursales[0]?.nombre ||
-                  'Sucursal asignada'}
-              </div>
             )}
           </div>
 
-          <div className="min-w-0">
-            <label className="block text-sm font-bold text-slate-700 mb-2">
-              Categoría
-            </label>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto]">
+            <div className="relative z-[60] min-w-0">
+              <Search
+                className="absolute left-4 top-3.5 text-[#B6A3AA]"
+                size={20}
+              />
+
+              <input
+                value={buscar}
+                onChange={(e) => {
+                  setBuscar(e.target.value);
+                  setIdProductoBusqueda('');
+                }}
+                onFocus={() => {
+                  if (String(buscar || '').trim().length >= 2) {
+                    setMostrandoSugerenciasInventario(true);
+                  }
+                }}
+                onBlur={() => {
+                  window.setTimeout(() => {
+                    setMostrandoSugerenciasInventario(false);
+                    setIndiceSugerenciaInventario(-1);
+                  }, 150);
+                }}
+                onKeyDown={(e) => {
+                  const haySugerencias =
+                    mostrandoSugerenciasInventario &&
+                    sugerenciasInventario.length > 0;
+
+                  if (e.key === 'ArrowDown' && haySugerencias) {
+                    e.preventDefault();
+                    setIndiceSugerenciaInventario((indice) =>
+                      indice >= sugerenciasInventario.length - 1 ? 0 : indice + 1
+                    );
+                    return;
+                  }
+
+                  if (e.key === 'ArrowUp' && haySugerencias) {
+                    e.preventDefault();
+                    setIndiceSugerenciaInventario((indice) =>
+                      indice <= 0 ? sugerenciasInventario.length - 1 : indice - 1
+                    );
+                    return;
+                  }
+
+                  if (e.key === 'Escape') {
+                    setMostrandoSugerenciasInventario(false);
+                    setIndiceSugerenciaInventario(-1);
+                    return;
+                  }
+
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+
+                    const itemSeleccionado =
+                      haySugerencias && indiceSugerenciaInventario >= 0
+                        ? sugerenciasInventario[indiceSugerenciaInventario]
+                        : null;
+
+                    buscarInventarioYMovimientos({ itemSeleccionado });
+                  }
+                }}
+                className="w-full rounded-2xl border border-[#EEDFE4] bg-[#FFFBFC] py-3 pl-12 pr-12 text-sm font-semibold text-[#4A3A40] outline-none focus:bg-white focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
+                placeholder="Buscar producto..."
+                autoComplete="off"
+                aria-label="Buscar en inventario"
+                aria-expanded={mostrandoSugerenciasInventario}
+                aria-controls="sugerencias-inventario"
+              />
+
+              {cargandoSugerenciasInventario ? (
+                <Loader2
+                  className="absolute right-4 top-3.5 animate-spin text-[#B85F7D]"
+                  size={20}
+                />
+              ) : (
+                (buscar || categoriaSeleccionada) && (
+                  <button
+                    type="button"
+                    onClick={limpiarFiltros}
+                    className="absolute right-3 top-2.5 flex h-8 w-8 items-center justify-center rounded-xl bg-[#FFF0F4] text-[#A84E6C] transition hover:bg-[#F9E1E8]"
+                    title="Limpiar búsqueda"
+                  >
+                    <X size={16} />
+                  </button>
+                )
+              )}
+
+              {mostrandoSugerenciasInventario &&
+                String(buscar || '').trim().length >= 2 && (
+                  <div
+                    id="sugerencias-inventario"
+                    className="absolute left-0 right-0 top-full z-[100] mt-2 overflow-hidden rounded-2xl border border-[#EEDFE4] bg-white shadow-2xl shadow-[#392F33]/10"
+                  >
+                    {cargandoSugerenciasInventario ? (
+                      <div className="flex items-center gap-3 px-4 py-4 text-sm font-semibold text-[#8B7A80]">
+                        <Loader2 size={19} className="animate-spin text-[#B85F7D]" />
+                        Buscando productos...
+                      </div>
+                    ) : sugerenciasInventario.length === 0 ? (
+                      <div className="px-4 py-4 text-sm font-semibold text-[#8B7A80]">
+                        No se encontraron productos en esta sucursal.
+                      </div>
+                    ) : (
+                      <div className="max-h-80 overflow-y-auto py-2">
+                        {sugerenciasInventario.map((item, index) => {
+                          const seleccionado =
+                            index === indiceSugerenciaInventario;
+
+                          return (
+                            <button
+                              key={item.id_inventario || item.id_producto}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                seleccionarSugerenciaInventario(item);
+                              }}
+                              className={`flex w-full items-start justify-between gap-4 px-4 py-3 text-left transition ${
+                                seleccionado
+                                  ? 'bg-[#FFF2F5] text-[#9E4966]'
+                                  : 'text-[#5B4950] hover:bg-[#FFFAFB]'
+                              }`}
+                            >
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-black">
+                                  {item.producto || item.nombre || 'Producto sin nombre'}
+                                </p>
+                                <p className="mt-0.5 truncate text-xs font-semibold text-[#9A858D]">
+                                  {[
+                                    item.codigo_barras || 'Sin código',
+                                    item.marca,
+                                    item.presentacion,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(' · ')}
+                                </p>
+                              </div>
+
+                              <span className="shrink-0 rounded-full bg-[#FFF2F5] px-3 py-1 text-xs font-black text-[#B85F7D]">
+                                {formatoNumero(item.stock_actual)}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+            </div>
 
             <select
               value={categoriaSeleccionada}
               onChange={(e) => setCategoriaSeleccionada(e.target.value)}
               disabled={!idSucursal || inventario.length === 0}
-              className="w-full min-w-0 px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2] bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
+              className="w-full rounded-2xl border border-[#EEDFE4] bg-white px-4 py-3 text-sm font-bold text-[#5B4950] outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0] disabled:cursor-not-allowed disabled:bg-[#F8F2F4]"
             >
               <option value="">Todas las categorías</option>
-
               {categoriasInventario.map((categoria) => (
                 <option key={categoria} value={categoria}>
                   {categoria}
                 </option>
               ))}
             </select>
-          </div>
 
-          <div className="min-w-0">
-            <label className="block text-sm font-bold text-slate-700 mb-2">
-              Fecha inicio
-            </label>
-            <input
-              type="date"
-              value={fechaInicio}
-              onChange={(e) => setFechaInicio(e.target.value)}
-              className="w-full min-w-0 px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2] bg-white"
-            />
-          </div>
-
-          <div className="min-w-0">
-            <label className="block text-sm font-bold text-slate-700 mb-2">
-              Fecha fin
-            </label>
-            <input
-              type="date"
-              value={fechaFin}
-              onChange={(e) => setFechaFin(e.target.value)}
-              className="w-full min-w-0 px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2] bg-white"
-            />
-          </div>
-
-          <div className="relative z-50 md:col-span-2 xl:col-span-2 min-w-0">
-            <label className="block text-sm font-bold text-slate-700 mb-2">
+            <button
+              type="button"
+              onClick={buscarInventarioYMovimientos}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B85F7D] px-5 py-3 text-sm font-black text-white transition hover:bg-[#A95270]"
+            >
+              <Search size={18} />
               Buscar
-            </label>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative z-[60] flex-1 min-w-0">
-                <Search
-                  className="absolute left-4 top-3.5 text-slate-400"
-                  size={20}
-                />
-
-                <input
-                  value={buscar}
-                  onChange={(e) => {
-                    setBuscar(e.target.value);
-                    setIdProductoBusqueda('');
-                  }}
-                  onFocus={() => {
-                    if (String(buscar || '').trim().length >= 2) {
-                      setMostrandoSugerenciasInventario(true);
-                    }
-                  }}
-                  onBlur={() => {
-                    window.setTimeout(() => {
-                      setMostrandoSugerenciasInventario(false);
-                      setIndiceSugerenciaInventario(-1);
-                    }, 150);
-                  }}
-                  onKeyDown={(e) => {
-                    const haySugerencias =
-                      mostrandoSugerenciasInventario &&
-                      sugerenciasInventario.length > 0;
-
-                    if (e.key === 'ArrowDown' && haySugerencias) {
-                      e.preventDefault();
-
-                      setIndiceSugerenciaInventario((indice) =>
-                        indice >= sugerenciasInventario.length - 1 ? 0 : indice + 1
-                      );
-
-                      return;
-                    }
-
-                    if (e.key === 'ArrowUp' && haySugerencias) {
-                      e.preventDefault();
-
-                      setIndiceSugerenciaInventario((indice) =>
-                        indice <= 0 ? sugerenciasInventario.length - 1 : indice - 1
-                      );
-
-                      return;
-                    }
-
-                    if (e.key === 'Escape') {
-                      setMostrandoSugerenciasInventario(false);
-                      setIndiceSugerenciaInventario(-1);
-                      return;
-                    }
-
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-
-                      const itemSeleccionado =
-                        haySugerencias && indiceSugerenciaInventario >= 0
-                          ? sugerenciasInventario[indiceSugerenciaInventario]
-                          : null;
-
-                      buscarInventarioYMovimientos({ itemSeleccionado });
-                    }
-                  }}
-                  className="w-full min-w-0 pl-12 pr-12 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2]"
-                  placeholder="Buscar por producto, código, marca o presentación..."
-                  autoComplete="off"
-                  aria-label="Buscar en inventario"
-                  aria-expanded={mostrandoSugerenciasInventario}
-                  aria-controls="sugerencias-inventario"
-                />
-
-                {cargandoSugerenciasInventario && (
-                  <Loader2
-                    className="absolute right-4 top-3.5 animate-spin text-[#B85F7D]"
-                    size={20}
-                  />
-                )}
-
-                {mostrandoSugerenciasInventario &&
-                  String(buscar || '').trim().length >= 2 && (
-                    <div
-                      id="sugerencias-inventario"
-                      className="absolute left-0 right-0 top-full z-[100] mt-2 overflow-hidden rounded-2xl border border-[#EEDFE4] bg-white shadow-2xl shadow-slate-900/15"
-                    >
-                      {cargandoSugerenciasInventario ? (
-                        <div className="flex items-center gap-3 px-4 py-4 text-sm font-semibold text-slate-500">
-                          <Loader2 size={19} className="animate-spin text-[#B85F7D]" />
-                          Buscando productos...
-                        </div>
-                      ) : sugerenciasInventario.length === 0 ? (
-                        <div className="px-4 py-4 text-sm font-semibold text-slate-500">
-                          No se encontraron productos en el inventario de esta sucursal.
-                        </div>
-                      ) : (
-                        <div className="max-h-80 overflow-y-auto py-2">
-                          {sugerenciasInventario.map((item, index) => {
-                            const seleccionado =
-                              index === indiceSugerenciaInventario;
-
-                            return (
-                              <button
-                                key={item.id_inventario || item.id_producto}
-                                type="button"
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  seleccionarSugerenciaInventario(item);
-                                }}
-                                className={`flex w-full items-start justify-between gap-4 px-4 py-3 text-left transition ${seleccionado
-                                  ? 'bg-[#FFF2F5] text-[#9E4966]'
-                                  : 'text-slate-700 hover:bg-[#FFFAFB]'
-                                  }`}
-                              >
-                                <div className="min-w-0">
-                                  <p className="truncate text-sm font-black">
-                                    {item.producto || item.nombre || 'Producto sin nombre'}
-                                  </p>
-
-                                  <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">
-                                    {[
-                                      item.codigo_barras || 'Sin código',
-                                      item.marca,
-                                      item.presentacion,
-                                    ]
-                                      .filter(Boolean)
-                                      .join(' · ')}
-                                  </p>
-                                </div>
-
-                                <span className="shrink-0 rounded-full bg-[#FFF2F5] px-3 py-1 text-xs font-black text-[#B85F7D]">
-                                  Stock: {formatoNumero(item.stock_actual)}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )}
-              </div>
-
-              <button
-                onClick={buscarInventarioYMovimientos}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold transition"
-              >
-                <RefreshCw size={19} className={cargando ? 'animate-spin' : ''} />
-                Buscar
-              </button>
-
-              <button
-                type="button"
-                onClick={limpiarFiltros}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition"
-              >
-                Limpiar
-              </button>
-
-            </div>
+            </button>
           </div>
         </div>
       </section>
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-4 sm:gap-5">
-        <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm border border-[#F0E2E7] min-w-0">
-          <div className="w-12 h-12 rounded-2xl bg-[#FFF2F5] text-[#B85F7D] flex items-center justify-center">
-            <Package size={24} />
+      <section className="grid grid-cols-2 gap-3">
+        <div className="rounded-3xl border border-[#F0E2E7] bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#FFF0F4] text-[#B85F7D]">
+              <Package size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-[#8B7A80]">Productos</p>
+              <p className="text-2xl font-black text-[#392F33]">
+                {resumen.totalProductos}
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-slate-500 mt-5">
-            Productos en inventario
-          </p>
-          <h3 className="text-3xl font-bold text-slate-800 mt-1 break-words">
-            {resumen.totalProductos}
-          </h3>
-          <p className="text-sm text-slate-400 mt-2 truncate">
-            {sucursalActual?.nombre || 'Sin sucursal'}
-          </p>
         </div>
 
-        <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm border border-[#F0E2E7] min-w-0">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center">
-            <AlertTriangle size={24} />
+        <button
+          type="button"
+          onClick={abrirBajoStock}
+          className="rounded-3xl border border-amber-200 bg-amber-50/70 p-4 text-left shadow-sm transition hover:bg-amber-50"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+              <AlertTriangle size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-amber-700">Bajo stock</p>
+              <p className="text-2xl font-black text-[#392F33]">
+                {resumen.productosBajoStock}
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-slate-500 mt-5">Bajo stock</p>
-          <h3 className="text-3xl font-bold text-slate-800 mt-1 break-words">
-            {resumen.productosBajoStock}
-          </h3>
-          <p className="text-sm text-slate-400 mt-2">
-            Requieren revisión
-          </p>
-        </div>
-
-
+        </button>
       </section>
 
       <section className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-[#F0E2E7] overflow-hidden">
         <div className="px-4 sm:px-6 py-5 border-b border-[#F0E2E7]">
-          <h2 className="text-lg sm:text-xl font-bold text-slate-800">
+          <h2 className="text-lg sm:text-xl font-bold text-[#392F33]">
             Productos en inventario
           </h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-[#8B7A80]">
             Existencias, ubicación, caducidad y acciones por producto.
           </p>
         </div>
 
         <div className="md:hidden p-4 space-y-3">
           {cargando ? (
-            <div className="rounded-2xl bg-[#FFFAFB] p-6 text-center text-slate-500 font-semibold">
+            <div className="rounded-2xl bg-[#FFFAFB] p-6 text-center text-[#8B7A80] font-semibold">
               Cargando inventario...
             </div>
           ) : inventarioFiltrado.length === 0 ? (
-            <div className="rounded-2xl bg-[#FFFAFB] p-6 text-center text-slate-500 font-semibold">
+            <div className="rounded-2xl bg-[#FFFAFB] p-6 text-center text-[#8B7A80] font-semibold">
               {categoriaSeleccionada
                 ? 'No hay productos que coincidan con la categoría seleccionada.'
                 : 'No hay productos con inventario asignado en esta sucursal.'}
@@ -2571,152 +2543,82 @@ export default function Inventario() {
             inventarioFiltrado.map((item) => (
               <article
                 key={item.id_inventario}
-                className={`rounded-2xl border p-4 shadow-sm ${item.bajo_stock
-                  ? 'bg-amber-50/60 border-amber-100'
-                  : 'bg-white border-[#F0E2E7]'
-                  }`}
+                className={`rounded-3xl border p-4 shadow-sm ${
+                  item.bajo_stock
+                    ? 'border-amber-200 bg-amber-50/60'
+                    : 'border-[#F0E2E7] bg-white'
+                }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-bold text-slate-800 break-words">
+                    <p className="break-words text-base font-black text-[#392F33]">
                       {item.producto}
                     </p>
-                    <p className="text-xs text-slate-500 mt-1 break-words">
-                      {item.marca || 'Sin marca'} ·{' '}
-                      {item.presentacion || 'Sin presentación'}
+                    <p className="mt-1 truncate text-xs font-semibold text-[#8B7A80]">
+                      {[item.categoria, item.marca, item.presentacion]
+                        .filter(Boolean)
+                        .join(' · ') || 'Sin datos adicionales'}
                     </p>
                   </div>
 
-                  {item.bajo_stock ? (
-                    <span className="inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-800 shrink-0">
-                      <AlertTriangle size={13} />
-                      Bajo
-                    </span>
-                  ) : (
-                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#FBEAF0] text-[#B85F7D] shrink-0">
-                      Correcto
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-xl bg-[#FFFAFB] p-3">
-                    <p className="text-xs text-slate-500">Código</p>
-                    <p className="font-bold text-slate-700 truncate">
-                      {item.codigo_barras || '—'}
+                  <div className="shrink-0 rounded-2xl bg-[#FFF0F4] px-3 py-2 text-right">
+                    <p className="text-[10px] font-black uppercase text-[#A08790]">
+                      Stock
                     </p>
-                  </div>
-
-                  <div className="rounded-xl bg-[#FFFAFB] p-3">
-                    <p className="text-xs text-slate-500">Categoría</p>
-                    <p className="font-bold text-slate-700 truncate">
-                      {item.categoria || 'Sin categoría'}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl bg-[#FFFAFB] p-3">
-                    <p className="text-xs text-slate-500">Stock</p>
-                    <p className="font-bold text-slate-800">
+                    <p className="text-xl font-black text-[#B85F7D]">
                       {formatoNumero(item.stock_actual)}
                     </p>
                   </div>
-
-                  <div className="rounded-xl bg-[#FFFAFB] p-3">
-                    <p className="text-xs text-slate-500">Mínimo</p>
-                    <p className="font-bold text-slate-700">
-                      {formatoNumero(item.stock_minimo)}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl bg-[#FFFAFB] p-3">
-                    <p className="text-xs text-slate-500">Ubicación</p>
-                    <p className="font-bold text-slate-700 truncate">
-                      {item.ubicacion || '—'}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl bg-[#FFFAFB] p-3">
-                    <p className="text-xs text-slate-500">Precio venta</p>
-                    <p className="font-bold text-[#B85F7D]">
-                      {formatoMoneda(item.precio_venta)}
-                    </p>
-                  </div>
                 </div>
 
-                <div className="mt-3 rounded-xl bg-[#FFFAFB] p-3">
-                  <p className="text-xs text-slate-500">Próxima caducidad</p>
-                  {item.proxima_caducidad ? (
-                    <p
-                      className={`font-bold ${item.caducidad_proxima ? 'text-red-700' : 'text-slate-700'
-                        }`}
-                    >
-                      {new Date(item.proxima_caducidad).toLocaleDateString('es-MX')}
+                <div className="mt-4 flex items-end justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold uppercase text-[#A08790]">
+                      Precio
                     </p>
-                  ) : (
-                    <p className="font-bold text-slate-400">—</p>
+                    <p className="text-lg font-black text-[#392F33]">
+                      {formatoMoneda(item.precio_venta)}
+                    </p>
+                    <p className="mt-1 truncate text-xs font-semibold text-[#9A858D]">
+                      {item.ubicacion ? `Ubicación: ${item.ubicacion}` : item.codigo_barras || 'Sin ubicación'}
+                    </p>
+                  </div>
+
+                  {item.bajo_stock && (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black text-amber-800">
+                      <AlertTriangle size={12} />
+                      Bajo stock
+                    </span>
                   )}
                 </div>
 
-                <div className="mt-4 grid grid-cols-4 gap-2">
-                  {/* ENTRADA - TODOS PUEDEN */}
+                {item.proxima_caducidad && item.caducidad_proxima && (
+                  <div className="mt-3 rounded-2xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">
+                    Caducidad próxima:{' '}
+                    {new Date(item.proxima_caducidad).toLocaleDateString('es-MX')}
+                  </div>
+                )}
+
+                <div className={`mt-4 grid gap-2 ${puedeGestionarInventario ? 'grid-cols-2' : 'grid-cols-1'}`}>
                   <button
+                    type="button"
                     onClick={() => abrirMovimiento(item, 'ENTRADA')}
-                    className="h-11 rounded-xl bg-[#FFF2F5] text-[#B85F7D] hover:bg-[#FBEAF0] flex items-center justify-center transition"
-                    title="Entrada"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B85F7D] px-4 py-3 text-sm font-black text-white transition hover:bg-[#A95270]"
                   >
-                    <ArrowDownCircle size={19} />
+                    <ArrowDownCircle size={18} />
+                    Entrada
                   </button>
 
-                  {/* SALIDA - SOLO SUPER_ADMIN */}
-                  <button
-                    onClick={() => abrirMovimiento(item, 'SALIDA')}
-                    disabled={!puedeGestionarInventario}
-                    className={`h-11 rounded-xl flex items-center justify-center transition ${puedeGestionarInventario
-                      ? 'bg-red-50 text-red-700 hover:bg-red-100'
-                      : 'bg-slate-100 text-slate-300 cursor-not-allowed opacity-50'
-                      }`}
-                    title={
-                      puedeGestionarInventario
-                        ? 'Salida'
-                        : 'Solo disponible para SUPER_ADMIN'
-                    }
-                  >
-                    <ArrowUpCircle size={19} />
-                  </button>
-
-                  {/* AJUSTE - SOLO SUPER_ADMIN */}
-                  <button
-                    onClick={() => abrirMovimiento(item, 'AJUSTE_POSITIVO')}
-                    disabled={!puedeGestionarInventario}
-                    className={`h-11 rounded-xl flex items-center justify-center transition ${puedeGestionarInventario
-                      ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                      : 'bg-slate-100 text-slate-300 cursor-not-allowed opacity-50'
-                      }`}
-                    title={
-                      puedeGestionarInventario
-                        ? 'Ajuste'
-                        : 'Solo disponible para SUPER_ADMIN'
-                    }
-                  >
-                    <RefreshCw size={18} />
-                  </button>
-
-                  {/* VER LOTES - SOLO SUPER_ADMIN */}
-                  <button
-                    onClick={() => abrirLotes(item)}
-                    disabled={!puedeGestionarInventario}
-                    className={`h-11 rounded-xl flex items-center justify-center transition ${puedeGestionarInventario
-                      ? 'bg-violet-50 text-violet-700 hover:bg-violet-100'
-                      : 'bg-slate-100 text-slate-300 cursor-not-allowed opacity-50'
-                      }`}
-                    title={
-                      puedeGestionarInventario
-                        ? 'Ver lotes'
-                        : 'Solo disponible para SUPER_ADMIN'
-                    }
-                  >
-                    <Package size={18} />
-                  </button>
+                  {puedeGestionarInventario && (
+                    <button
+                      type="button"
+                      onClick={() => setProductoAcciones(item)}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#EEDFE4] bg-[#FFF9FA] px-4 py-3 text-sm font-black text-[#755F67] transition hover:bg-[#FFF0F4] hover:text-[#B85F7D]"
+                    >
+                      <MoreHorizontal size={18} />
+                      Más
+                    </button>
+                  )}
                 </div>
               </article>
             ))
@@ -2727,34 +2629,34 @@ export default function Inventario() {
           <table className="w-full min-w-[1250px]">
             <thead className="bg-[#FFFAFB] border-b border-[#F0E2E7]">
               <tr>
-                <th className="px-5 py-4 text-left text-xs font-bold text-slate-500 uppercase">
+                <th className="px-5 py-4 text-left text-xs font-bold text-[#8B7A80] uppercase">
                   Producto
                 </th>
-                <th className="px-5 py-4 text-left text-xs font-bold text-slate-500 uppercase">
+                <th className="px-5 py-4 text-left text-xs font-bold text-[#8B7A80] uppercase">
                   Código
                 </th>
-                <th className="px-5 py-4 text-left text-xs font-bold text-slate-500 uppercase">
+                <th className="px-5 py-4 text-left text-xs font-bold text-[#8B7A80] uppercase">
                   Categoría
                 </th>
-                <th className="px-5 py-4 text-left text-xs font-bold text-slate-500 uppercase">
+                <th className="px-5 py-4 text-left text-xs font-bold text-[#8B7A80] uppercase">
                   Ubicación
                 </th>
-                <th className="px-5 py-4 text-left text-xs font-bold text-slate-500 uppercase">
+                <th className="px-5 py-4 text-left text-xs font-bold text-[#8B7A80] uppercase">
                   Próxima caducidad
                 </th>
-                <th className="px-5 py-4 text-right text-xs font-bold text-slate-500 uppercase">
+                <th className="px-5 py-4 text-right text-xs font-bold text-[#8B7A80] uppercase">
                   Stock
                 </th>
-                <th className="px-5 py-4 text-right text-xs font-bold text-slate-500 uppercase">
+                <th className="px-5 py-4 text-right text-xs font-bold text-[#8B7A80] uppercase">
                   Mínimo
                 </th>
-                <th className="px-5 py-4 text-right text-xs font-bold text-slate-500 uppercase">
+                <th className="px-5 py-4 text-right text-xs font-bold text-[#8B7A80] uppercase">
                   Precio venta
                 </th>
-                <th className="px-5 py-4 text-center text-xs font-bold text-slate-500 uppercase">
+                <th className="px-5 py-4 text-center text-xs font-bold text-[#8B7A80] uppercase">
                   Estado
                 </th>
-                <th className="px-5 py-4 text-center text-xs font-bold text-slate-500 uppercase sticky right-0 bg-[#FFFAFB] shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)] z-10">
+                <th className="px-5 py-4 text-center text-xs font-bold text-[#8B7A80] uppercase sticky right-0 bg-[#FFFAFB] shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)] z-10">
                   Acciones
                 </th>
               </tr>
@@ -2763,13 +2665,13 @@ export default function Inventario() {
             <tbody className="divide-y divide-[#F4E8EB]">
               {cargando ? (
                 <tr>
-                  <td colSpan="10" className="px-5 py-10 text-center text-slate-500">
+                  <td colSpan="10" className="px-5 py-10 text-center text-[#8B7A80]">
                     Cargando inventario...
                   </td>
                 </tr>
               ) : inventarioFiltrado.length === 0 ? (
                 <tr>
-                  <td colSpan="10" className="px-5 py-10 text-center text-slate-500">
+                  <td colSpan="10" className="px-5 py-10 text-center text-[#8B7A80]">
                     {categoriaSeleccionada
                       ? 'No hay productos que coincidan con la categoría seleccionada.'
                       : 'No hay productos con inventario asignado en esta sucursal.'}
@@ -2786,24 +2688,24 @@ export default function Inventario() {
                     }
                   >
                     <td className="px-5 py-4">
-                      <p className="font-bold text-slate-800">
+                      <p className="font-bold text-[#392F33]">
                         {item.producto}
                       </p>
-                      <p className="text-xs text-slate-500 mt-1">
+                      <p className="text-xs text-[#8B7A80] mt-1">
                         {item.marca || 'Sin marca'} ·{' '}
                         {item.presentacion || 'Sin presentación'}
                       </p>
                     </td>
 
-                    <td className="px-5 py-4 text-sm text-slate-600">
+                    <td className="px-5 py-4 text-sm text-[#755F67]">
                       {item.codigo_barras || '—'}
                     </td>
 
-                    <td className="px-5 py-4 text-sm text-slate-600">
+                    <td className="px-5 py-4 text-sm text-[#755F67]">
                       {item.categoria || 'Sin categoría'}
                     </td>
 
-                    <td className="px-5 py-4 text-sm text-slate-600">
+                    <td className="px-5 py-4 text-sm text-[#755F67]">
                       {item.ubicacion || '—'}
                     </td>
 
@@ -2812,7 +2714,7 @@ export default function Inventario() {
                         <span
                           className={`font-bold ${item.caducidad_proxima
                             ? 'text-red-700'
-                            : 'text-slate-700'
+                            : 'text-[#5B4950]'
                             }`}
                         >
                           {new Date(item.proxima_caducidad).toLocaleDateString(
@@ -2820,17 +2722,17 @@ export default function Inventario() {
                           )}
                         </span>
                       ) : (
-                        <span className="text-slate-400">—</span>
+                        <span className="text-[#B09CA3]">—</span>
                       )}
                     </td>
 
                     <td className="px-5 py-4 text-right">
-                      <span className="text-lg font-bold text-slate-800">
+                      <span className="text-lg font-bold text-[#392F33]">
                         {formatoNumero(item.stock_actual)}
                       </span>
                     </td>
 
-                    <td className="px-5 py-4 text-right font-semibold text-slate-600">
+                    <td className="px-5 py-4 text-right font-semibold text-[#755F67]">
                       {formatoNumero(item.stock_minimo)}
                     </td>
 
@@ -2851,69 +2753,27 @@ export default function Inventario() {
                       )}
                     </td>
 
-                    <td className="px-5 py-4 sticky right-0 bg-white shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.45)]">
+                    <td className="px-5 py-4 sticky right-0 bg-white shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.18)]">
                       <div className="flex items-center justify-center gap-2">
-
-                        {/* ENTRADA - TODOS PUEDEN */}
                         <button
+                          type="button"
                           onClick={() => abrirMovimiento(item, 'ENTRADA')}
-                          className="w-9 h-9 rounded-xl bg-[#FFF2F5] text-[#B85F7D] hover:bg-[#FBEAF0] flex items-center justify-center transition"
-                          title="Entrada"
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#FFF2F5] px-3 py-2 text-xs font-black text-[#B85F7D] transition hover:bg-[#FBEAF0]"
                         >
-                          <ArrowDownCircle size={18} />
+                          <ArrowDownCircle size={17} />
+                          Entrada
                         </button>
 
-                        {/* SALIDA - SOLO SUPER_ADMIN */}
-                        <button
-                          onClick={() => abrirMovimiento(item, 'SALIDA')}
-                          disabled={!puedeGestionarInventario}
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center transition ${puedeGestionarInventario
-                              ? 'bg-red-50 text-red-700 hover:bg-red-100'
-                              : 'bg-slate-100 text-slate-300 cursor-not-allowed opacity-50'
-                            }`}
-                          title={
-                            puedeGestionarInventario
-                              ? 'Salida'
-                              : 'Solo disponible para SUPER_ADMIN'
-                          }
-                        >
-                          <ArrowUpCircle size={18} />
-                        </button>
-
-                        {/* AJUSTE - SOLO SUPER_ADMIN */}
-                        <button
-                          onClick={() => abrirMovimiento(item, 'AJUSTE_POSITIVO')}
-                          disabled={!puedeGestionarInventario}
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center transition ${puedeGestionarInventario
-                              ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                              : 'bg-slate-100 text-slate-300 cursor-not-allowed opacity-50'
-                            }`}
-                          title={
-                            puedeGestionarInventario
-                              ? 'Ajuste'
-                              : 'Solo disponible para SUPER_ADMIN'
-                          }
-                        >
-                          <RefreshCw size={17} />
-                        </button>
-
-                        {/* LOTES - SOLO SUPER_ADMIN */}
-                        <button
-                          onClick={() => abrirLotes(item)}
-                          disabled={!puedeGestionarInventario}
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center transition ${puedeGestionarInventario
-                              ? 'bg-violet-50 text-violet-700 hover:bg-violet-100'
-                              : 'bg-slate-100 text-slate-300 cursor-not-allowed opacity-50'
-                            }`}
-                          title={
-                            puedeGestionarInventario
-                              ? 'Ver lotes'
-                              : 'Solo disponible para SUPER_ADMIN'
-                          }
-                        >
-                          <Package size={17} />
-                        </button>
-
+                        {puedeGestionarInventario && (
+                          <button
+                            type="button"
+                            onClick={() => setProductoAcciones(item)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFFAFB] text-[#755F67] transition hover:bg-[#F7EEF1] hover:text-[#B85F7D]"
+                            title="Más acciones"
+                          >
+                            <MoreHorizontal size={18} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -2924,27 +2784,102 @@ export default function Inventario() {
         </div>
       </section>
 
+      {productoAcciones && (
+        <div className="fixed inset-0 z-[95] flex items-end justify-center p-3 sm:items-center">
+          <button
+            type="button"
+            aria-label="Cerrar acciones"
+            className="fixed inset-0 bg-[#392F33]/45 backdrop-blur-sm"
+            onClick={() => setProductoAcciones(null)}
+          />
+
+          <div className="relative z-[96] w-full max-w-md overflow-hidden rounded-[2rem] bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-[#F0E2E7] px-5 py-4">
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase tracking-wide text-[#B85F7D]">
+                  Gestionar inventario
+                </p>
+                <h3 className="mt-1 truncate text-lg font-black text-[#392F33]">
+                  {productoAcciones.producto}
+                </h3>
+                <p className="text-sm font-semibold text-[#8B7A80]">
+                  Stock actual: {formatoNumero(productoAcciones.stock_actual)}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setProductoAcciones(null)}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#FFF0F4] text-[#A84E6C]"
+              >
+                <X size={19} />
+              </button>
+            </div>
+
+            <div className="grid gap-2 p-4">
+              <button
+                type="button"
+                onClick={() => {
+                  const item = productoAcciones;
+                  setProductoAcciones(null);
+                  abrirMovimiento(item, 'SALIDA');
+                }}
+                className="flex items-center gap-3 rounded-2xl bg-red-50 px-4 py-3 text-left font-black text-red-700 transition hover:bg-red-100"
+              >
+                <ArrowUpCircle size={19} />
+                Registrar salida
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const item = productoAcciones;
+                  setProductoAcciones(null);
+                  abrirMovimiento(item, 'AJUSTE_POSITIVO');
+                }}
+                className="flex items-center gap-3 rounded-2xl bg-[#FFF0F4] px-4 py-3 text-left font-black text-[#A84E6C] transition hover:bg-[#F9E1E8]"
+              >
+                <RefreshCw size={18} />
+                Ajustar existencia
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const item = productoAcciones;
+                  setProductoAcciones(null);
+                  abrirLotes(item);
+                }}
+                className="flex items-center gap-3 rounded-2xl bg-[#FFFAFB] px-4 py-3 text-left font-black text-[#755F67] transition hover:bg-[#F7EEF1]"
+              >
+                <Package size={18} />
+                Ver lotes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {modalAsignar && (
         <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center px-3 sm:px-4 py-4 sm:py-8 overflow-y-auto">
           <div
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-[#392F33]/60 backdrop-blur-sm"
             onClick={cerrarModalAsignar}
           />
 
           <div className="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden my-auto">
             <div className="px-4 sm:px-6 py-5 border-b border-[#F0E2E7] flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <h2 className="text-lg sm:text-xl font-bold text-slate-800">
+                <h2 className="text-lg sm:text-xl font-bold text-[#392F33]">
                   Asignar stock inicial
                 </h2>
-                <p className="text-sm text-slate-500 break-words">
+                <p className="text-sm text-[#8B7A80] break-words">
                   Sucursal: {sucursalActual?.nombre || 'Sin sucursal'}
                 </p>
               </div>
 
               <button
                 onClick={cerrarModalAsignar}
-                className="w-10 h-10 rounded-2xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center shrink-0"
+                className="w-10 h-10 rounded-2xl bg-[#FFF9FA] hover:bg-[#F7EEF1] flex items-center justify-center shrink-0"
               >
                 <X size={20} />
               </button>
@@ -2953,7 +2888,7 @@ export default function Inventario() {
             <form onSubmit={asignarInventario}>
               <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-5 max-h-[70vh] overflow-y-auto">
                 <div className="md:col-span-2 min-w-0">
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Producto *
                   </label>
 
@@ -2986,7 +2921,7 @@ export default function Inventario() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Proveedor
                   </label>
                   <select
@@ -3008,7 +2943,7 @@ export default function Inventario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Stock inicial *
                   </label>
                   <input
@@ -3023,7 +2958,7 @@ export default function Inventario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Stock mínimo
                   </label>
                   <input
@@ -3038,7 +2973,7 @@ export default function Inventario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Ubicación
                   </label>
                   <input
@@ -3051,7 +2986,7 @@ export default function Inventario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Lote
                   </label>
                   <input
@@ -3064,7 +2999,7 @@ export default function Inventario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Fecha de caducidad
                   </label>
                   <input
@@ -3077,7 +3012,7 @@ export default function Inventario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Precio compra lote
                   </label>
                   <input
@@ -3092,7 +3027,7 @@ export default function Inventario() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Observaciones
                   </label>
                   <input
@@ -3105,15 +3040,7 @@ export default function Inventario() {
                 </div>
               </div>
 
-              <div className="px-4 sm:px-6 py-5 flex flex-col sm:flex-row justify-end gap-3 border-t border-[#F0E2E7]">
-                <button
-                  type="button"
-                  onClick={cerrarModalAsignar}
-                  className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition"
-                >
-                  Cancelar
-                </button>
-
+              <div className="px-4 sm:px-6 py-5 flex justify-end border-t border-[#F0E2E7]">
                 <button
                   type="submit"
                   disabled={guardando}
@@ -3131,17 +3058,17 @@ export default function Inventario() {
       {modalMovimiento && (
         <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center px-3 sm:px-4 py-4 sm:py-8 overflow-y-auto">
           <div
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-[#392F33]/60 backdrop-blur-sm"
             onClick={cerrarModalMovimiento}
           />
 
           <div className="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden my-auto">
             <div className="px-4 sm:px-6 py-5 border-b border-[#F0E2E7] flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <h2 className="text-lg sm:text-xl font-bold text-slate-800">
+                <h2 className="text-lg sm:text-xl font-bold text-[#392F33]">
                   Movimiento de inventario
                 </h2>
-                <p className="text-sm text-slate-500 break-words">
+                <p className="text-sm text-[#8B7A80] break-words">
                   {getProductoNombre(formMovimiento.id_producto) ||
                     'Selecciona un producto'}
                 </p>
@@ -3149,7 +3076,7 @@ export default function Inventario() {
 
               <button
                 onClick={cerrarModalMovimiento}
-                className="w-10 h-10 rounded-2xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center shrink-0"
+                className="w-10 h-10 rounded-2xl bg-[#FFF9FA] hover:bg-[#F7EEF1] flex items-center justify-center shrink-0"
               >
                 <X size={20} />
               </button>
@@ -3158,7 +3085,7 @@ export default function Inventario() {
             <form onSubmit={guardarMovimiento}>
               <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-5 max-h-[70vh] overflow-y-auto">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Producto *
                   </label>
                   <ProductoSearchSelect
@@ -3185,7 +3112,7 @@ export default function Inventario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Tipo de movimiento *
                   </label>
                   <select
@@ -3204,7 +3131,7 @@ export default function Inventario() {
 
                 {requiereProveedorMovimiento && (
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                    <label className="block text-sm font-bold text-[#5B4950] mb-2">
                       Proveedor
                     </label>
                     <select
@@ -3228,7 +3155,7 @@ export default function Inventario() {
 
                 {movimientosConLoteExistente.includes(formMovimiento.tipo_movimiento) && (
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                    <label className="block text-sm font-bold text-[#5B4950] mb-2">
                       {movimientosEntrada.includes(formMovimiento.tipo_movimiento)
                         ? 'Lote recibido'
                         : 'Lote de salida'}
@@ -3264,12 +3191,12 @@ export default function Inventario() {
                         ))}
                     </select>
                     {movimientosSalida.includes(formMovimiento.tipo_movimiento) ? (
-                      <p className="text-xs text-slate-500 mt-1">
+                      <p className="text-xs text-[#8B7A80] mt-1">
                         Si no seleccionas lote, el sistema descontará primero el lote
                         que caduca antes.
                       </p>
                     ) : (
-                      <p className="text-xs text-slate-500 mt-1">
+                      <p className="text-xs text-[#8B7A80] mt-1">
                         Para devolución de cliente, selecciona el lote donde regresará
                         el medicamento. Al elegirlo se llenan caducidad y precio.
                       </p>
@@ -3277,23 +3204,23 @@ export default function Inventario() {
 
                     {formMovimiento.id_lote && (
                       <div className="mt-3 rounded-2xl bg-[#FFFAFB] border border-[#F0E2E7] p-4 text-sm">
-                        <p className="font-bold text-slate-700">
+                        <p className="font-bold text-[#5B4950]">
                           Lote seleccionado: {formMovimiento.lote || '—'}
                         </p>
-                        <p className="text-slate-500 mt-1">
+                        <p className="text-[#8B7A80] mt-1">
                           Proveedor:{' '}
-                          <span className="font-semibold text-slate-700">
+                          <span className="font-semibold text-[#5B4950]">
                             {proveedores.find((p) => Number(p.id_proveedor) === Number(formMovimiento.id_proveedor))?.nombre || 'Sin proveedor'}
                           </span>
                           <br />
                           Caducidad:{' '}
-                          <span className="font-semibold text-slate-700">
+                          <span className="font-semibold text-[#5B4950]">
                             {formMovimiento.fecha_caducidad
                               ? new Date(formMovimiento.fecha_caducidad).toLocaleDateString('es-MX')
                               : 'Sin fecha'}
                           </span>{' '}
                           · Precio compra:{' '}
-                          <span className="font-semibold text-slate-700">
+                          <span className="font-semibold text-[#5B4950]">
                             {formatoMoneda(formMovimiento.precio_compra)}
                           </span>
                         </p>
@@ -3303,7 +3230,7 @@ export default function Inventario() {
                 )}
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Cantidad *
                   </label>
                   <input
@@ -3320,7 +3247,7 @@ export default function Inventario() {
                 {movimientosPermitenNuevoLote.includes(formMovimiento.tipo_movimiento) && (
                   <>
                     <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">
+                      <label className="block text-sm font-bold text-[#5B4950] mb-2">
                         Lote
                       </label>
                       <input
@@ -3333,7 +3260,7 @@ export default function Inventario() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">
+                      <label className="block text-sm font-bold text-[#5B4950] mb-2">
                         Fecha de caducidad
                       </label>
                       <input
@@ -3346,7 +3273,7 @@ export default function Inventario() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">
+                      <label className="block text-sm font-bold text-[#5B4950] mb-2">
                         Precio compra lote
                       </label>
                       <input
@@ -3363,7 +3290,7 @@ export default function Inventario() {
                 )}
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Stock mínimo
                   </label>
                   <input
@@ -3378,7 +3305,7 @@ export default function Inventario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Ubicación
                   </label>
                   <input
@@ -3391,7 +3318,7 @@ export default function Inventario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Referencia
                   </label>
                   <input
@@ -3404,7 +3331,7 @@ export default function Inventario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Observaciones
                   </label>
                   <input
@@ -3417,15 +3344,7 @@ export default function Inventario() {
                 </div>
               </div>
 
-              <div className="px-4 sm:px-6 py-5 flex flex-col sm:flex-row justify-end gap-3 border-t border-[#F0E2E7]">
-                <button
-                  type="button"
-                  onClick={cerrarModalMovimiento}
-                  className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition"
-                >
-                  Cancelar
-                </button>
-
+              <div className="px-4 sm:px-6 py-5 flex justify-end border-t border-[#F0E2E7]">
                 <button
                   type="submit"
                   disabled={guardando}
@@ -3443,24 +3362,24 @@ export default function Inventario() {
       {modalLotes && (
         <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center px-3 sm:px-4 py-4 sm:py-8 overflow-y-auto">
           <div
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-[#392F33]/60 backdrop-blur-sm"
             onClick={() => setModalLotes(false)}
           />
 
           <div className="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden my-auto">
             <div className="px-4 sm:px-6 py-5 border-b border-[#F0E2E7] flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <h2 className="text-lg sm:text-xl font-bold text-slate-800">
+                <h2 className="text-lg sm:text-xl font-bold text-[#392F33]">
                   Lotes del producto
                 </h2>
-                <p className="text-sm text-slate-500 break-words">
+                <p className="text-sm text-[#8B7A80] break-words">
                   {productoLotes?.producto || 'Producto'}
                 </p>
               </div>
 
               <button
                 onClick={() => setModalLotes(false)}
-                className="w-10 h-10 rounded-2xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center shrink-0"
+                className="w-10 h-10 rounded-2xl bg-[#FFF9FA] hover:bg-[#F7EEF1] flex items-center justify-center shrink-0"
               >
                 <X size={20} />
               </button>
@@ -3468,7 +3387,7 @@ export default function Inventario() {
 
             <div className="p-4 sm:p-6 overflow-y-auto max-h-[75vh]">
               {lotes.length === 0 ? (
-                <div className="text-center py-10 text-slate-500">
+                <div className="text-center py-10 text-[#8B7A80]">
                   No hay lotes registrados para este producto.
                 </div>
               ) : (
@@ -3476,31 +3395,31 @@ export default function Inventario() {
                   <table className="w-full min-w-[1350px]">
                     <thead className="bg-[#FFFAFB] border-b border-[#F0E2E7]">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Lote
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Caducidad
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-right text-xs font-bold text-[#8B7A80] uppercase">
                           Stock
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-right text-xs font-bold text-[#8B7A80] uppercase">
                           Precio compra
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Proveedor
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Compra
                         </th>
-                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-center text-xs font-bold text-[#8B7A80] uppercase">
                           Estado
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Entrada
                         </th>
-                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-center text-xs font-bold text-[#8B7A80] uppercase">
                           Acciones
                         </th>
                       </tr>
@@ -3509,11 +3428,11 @@ export default function Inventario() {
                     <tbody className="divide-y divide-[#F4E8EB]">
                       {lotes.map((loteItem) => (
                         <tr key={loteItem.id_lote}>
-                          <td className="px-4 py-3 font-bold text-slate-800">
+                          <td className="px-4 py-3 font-bold text-[#392F33]">
                             {loteItem.lote}
                           </td>
 
-                          <td className="px-4 py-3 text-slate-600">
+                          <td className="px-4 py-3 text-[#755F67]">
                             {loteItem.fecha_caducidad
                               ? new Date(loteItem.fecha_caducidad).toLocaleDateString(
                                 'es-MX'
@@ -3521,19 +3440,19 @@ export default function Inventario() {
                               : 'Sin fecha'}
                           </td>
 
-                          <td className="px-4 py-3 text-right font-bold text-slate-800">
+                          <td className="px-4 py-3 text-right font-bold text-[#392F33]">
                             {formatoNumero(loteItem.stock_actual)}
                           </td>
 
-                          <td className="px-4 py-3 text-right text-slate-600">
+                          <td className="px-4 py-3 text-right text-[#755F67]">
                             {formatoMoneda(loteItem.precio_compra)}
                           </td>
 
-                          <td className="px-4 py-3 text-slate-600">
+                          <td className="px-4 py-3 text-[#755F67]">
                             {loteItem.proveedor || 'Sin proveedor'}
                           </td>
 
-                          <td className="px-4 py-3 text-slate-600">
+                          <td className="px-4 py-3 text-[#755F67]">
                             {loteItem.folio_compra || '—'}
                           </td>
 
@@ -3553,7 +3472,7 @@ export default function Inventario() {
                             )}
                           </td>
 
-                          <td className="px-4 py-3 text-slate-600">
+                          <td className="px-4 py-3 text-[#755F67]">
                             {formatoFecha(loteItem.fecha_entrada)}
                           </td>
 
@@ -3562,7 +3481,7 @@ export default function Inventario() {
                               <button
                                 type="button"
                                 onClick={() => abrirEditarLote(loteItem)}
-                                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold transition"
+                                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#FFF0F4] text-[#A84E6C] hover:bg-[#F9E1E8] font-bold transition"
                                 title="Editar lote"
                               >
                                 <Pencil size={16} />
@@ -3579,7 +3498,7 @@ export default function Inventario() {
                                   Dar de baja
                                 </button>
                               ) : (
-                                <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-500">
+                                <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#FFF9FA] text-[#8B7A80]">
                                   Sin stock
                                 </span>
                               )}
@@ -3606,10 +3525,10 @@ export default function Inventario() {
           <div className="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden my-auto">
             <div className="px-4 sm:px-6 py-5 border-b border-[#F0E2E7] flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <h2 className="text-lg sm:text-xl font-bold text-slate-800">
+                <h2 className="text-lg sm:text-xl font-bold text-[#392F33]">
                   Editar lote
                 </h2>
-                <p className="text-sm text-slate-500 break-words">
+                <p className="text-sm text-[#8B7A80] break-words">
                   {productoLotes?.producto || loteEditando?.producto || 'Producto'}
                 </p>
               </div>
@@ -3617,7 +3536,7 @@ export default function Inventario() {
               <button
                 type="button"
                 onClick={cerrarModalEditarLote}
-                className="w-10 h-10 rounded-2xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center shrink-0"
+                className="w-10 h-10 rounded-2xl bg-[#FFF9FA] hover:bg-[#F7EEF1] flex items-center justify-center shrink-0"
               >
                 <X size={20} />
               </button>
@@ -3635,7 +3554,7 @@ export default function Inventario() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Lote *
                   </label>
                   <input
@@ -3648,7 +3567,7 @@ export default function Inventario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Fecha de caducidad
                   </label>
                   <input
@@ -3661,7 +3580,7 @@ export default function Inventario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Precio compra lote
                   </label>
                   <input
@@ -3677,7 +3596,7 @@ export default function Inventario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Stock actual del lote
                   </label>
                   <input
@@ -3693,7 +3612,7 @@ export default function Inventario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Ubicación
                   </label>
                   <input
@@ -3707,7 +3626,7 @@ export default function Inventario() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Proveedor
                   </label>
                   <select
@@ -3729,7 +3648,7 @@ export default function Inventario() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Motivo del ajuste de stock
                   </label>
                   <textarea
@@ -3742,9 +3661,9 @@ export default function Inventario() {
                   />
                 </div>
 
-                <div className="md:col-span-2 rounded-2xl bg-[#FFFAFB] border border-[#F0E2E7] p-4 text-sm text-slate-600">
+                <div className="md:col-span-2 rounded-2xl bg-[#FFFAFB] border border-[#F0E2E7] p-4 text-sm text-[#755F67]">
                   <p>
-                    <span className="font-bold text-slate-700">
+                    <span className="font-bold text-[#5B4950]">
                       Compra relacionada:
                     </span>{' '}
                     {loteEditando?.folio_compra || '—'}
@@ -3752,7 +3671,7 @@ export default function Inventario() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Lote *
                   </label>
                   <input
@@ -3765,7 +3684,7 @@ export default function Inventario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Fecha de caducidad
                   </label>
                   <input
@@ -3778,7 +3697,7 @@ export default function Inventario() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Precio compra lote
                   </label>
                   <input
@@ -3793,7 +3712,7 @@ export default function Inventario() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Proveedor
                   </label>
                   <select
@@ -3814,27 +3733,19 @@ export default function Inventario() {
                   </select>
                 </div>
 
-                <div className="md:col-span-2 rounded-2xl bg-[#FFFAFB] border border-[#F0E2E7] p-4 text-sm text-slate-600">
+                <div className="md:col-span-2 rounded-2xl bg-[#FFFAFB] border border-[#F0E2E7] p-4 text-sm text-[#755F67]">
                   <p>
-                    <span className="font-bold text-slate-700">Stock actual:</span>{' '}
+                    <span className="font-bold text-[#5B4950]">Stock actual:</span>{' '}
                     {formatoNumero(loteEditando?.stock_actual)}
                   </p>
                   <p className="mt-1">
-                    <span className="font-bold text-slate-700">Compra relacionada:</span>{' '}
+                    <span className="font-bold text-[#5B4950]">Compra relacionada:</span>{' '}
                     {loteEditando?.folio_compra || '—'}
                   </p>
                 </div>
               </div>
 
-              <div className="px-4 sm:px-6 py-5 flex flex-col sm:flex-row justify-end gap-3 border-t border-[#F0E2E7]">
-                <button
-                  type="button"
-                  onClick={cerrarModalEditarLote}
-                  className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition"
-                >
-                  Cancelar
-                </button>
-
+              <div className="px-4 sm:px-6 py-5 flex justify-end border-t border-[#F0E2E7]">
                 <button
                   type="submit"
                   disabled={guardando}
@@ -3852,24 +3763,24 @@ export default function Inventario() {
       {modalCaducidad && (
         <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center px-3 sm:px-4 py-4 sm:py-8 overflow-y-auto">
           <div
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-[#392F33]/60 backdrop-blur-sm"
             onClick={() => setModalCaducidad(false)}
           />
 
           <div className="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden my-auto">
             <div className="px-4 sm:px-6 py-5 border-b border-[#F0E2E7] flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <h2 className="text-lg sm:text-xl font-bold text-slate-800">
+                <h2 className="text-lg sm:text-xl font-bold text-[#392F33]">
                   Caducidad próxima
                 </h2>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-[#8B7A80]">
                   Productos caducados o próximos a caducar en 90 días.
                 </p>
               </div>
 
               <button
                 onClick={() => setModalCaducidad(false)}
-                className="w-10 h-10 rounded-2xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center shrink-0"
+                className="w-10 h-10 rounded-2xl bg-[#FFF9FA] hover:bg-[#F7EEF1] flex items-center justify-center shrink-0"
               >
                 <X size={20} />
               </button>
@@ -3877,7 +3788,7 @@ export default function Inventario() {
 
             <div className="p-4 sm:p-6 overflow-y-auto max-h-[75vh]">
               {caducidadProxima.length === 0 ? (
-                <div className="text-center py-10 text-slate-500">
+                <div className="text-center py-10 text-[#8B7A80]">
                   No hay productos próximos a caducar.
                 </div>
               ) : (
@@ -3885,25 +3796,25 @@ export default function Inventario() {
                   <table className="w-full min-w-[1050px]">
                     <thead className="bg-[#FFFAFB] border-b border-[#F0E2E7]">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Producto
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Lote
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Proveedor
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Caducidad
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-right text-xs font-bold text-[#8B7A80] uppercase">
                           Stock
                         </th>
-                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-center text-xs font-bold text-[#8B7A80] uppercase">
                           Estado
                         </th>
-                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-center text-xs font-bold text-[#8B7A80] uppercase">
                           Acción
                         </th>
                       </tr>
@@ -3912,15 +3823,15 @@ export default function Inventario() {
                     <tbody className="divide-y divide-[#F4E8EB]">
                       {caducidadProxima.map((item) => (
                         <tr key={item.id_lote}>
-                          <td className="px-4 py-3 font-bold text-slate-800">
+                          <td className="px-4 py-3 font-bold text-[#392F33]">
                             {item.producto}
                           </td>
 
-                          <td className="px-4 py-3 text-slate-600">
+                          <td className="px-4 py-3 text-[#755F67]">
                             {item.lote}
                           </td>
 
-                          <td className="px-4 py-3 text-slate-600">
+                          <td className="px-4 py-3 text-[#755F67]">
                             {item.proveedor || 'Sin proveedor'}
                           </td>
 
@@ -3932,7 +3843,7 @@ export default function Inventario() {
                               : 'Sin fecha'}
                           </td>
 
-                          <td className="px-4 py-3 text-right font-bold text-slate-800">
+                          <td className="px-4 py-3 text-right font-bold text-[#392F33]">
                             {formatoNumero(item.stock_actual)}
                           </td>
 
@@ -3970,24 +3881,24 @@ export default function Inventario() {
       {modalBajoStock && (
         <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center px-3 sm:px-4 py-4 sm:py-8 overflow-y-auto">
           <div
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-[#392F33]/60 backdrop-blur-sm"
             onClick={() => setModalBajoStock(false)}
           />
 
           <div className="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden my-auto">
             <div className="px-4 sm:px-6 py-5 border-b border-[#F0E2E7] flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <h2 className="text-lg sm:text-xl font-bold text-slate-800">
+                <h2 className="text-lg sm:text-xl font-bold text-[#392F33]">
                   Productos con bajo stock
                 </h2>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-[#8B7A80]">
                   Productos cuyo stock actual es menor o igual al mínimo.
                 </p>
               </div>
 
               <button
                 onClick={() => setModalBajoStock(false)}
-                className="w-10 h-10 rounded-2xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center shrink-0"
+                className="w-10 h-10 rounded-2xl bg-[#FFF9FA] hover:bg-[#F7EEF1] flex items-center justify-center shrink-0"
               >
                 <X size={20} />
               </button>
@@ -3995,7 +3906,7 @@ export default function Inventario() {
 
             <div className="p-4 sm:p-6 overflow-y-auto max-h-[75vh]">
               {bajoStock.length === 0 ? (
-                <div className="text-center py-10 text-slate-500">
+                <div className="text-center py-10 text-[#8B7A80]">
                   No hay productos con bajo stock.
                 </div>
               ) : (
@@ -4003,19 +3914,19 @@ export default function Inventario() {
                   <table className="w-full min-w-[800px]">
                     <thead className="bg-[#FFFAFB] border-b border-[#F0E2E7]">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Producto
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Categoría
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-right text-xs font-bold text-[#8B7A80] uppercase">
                           Stock
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-right text-xs font-bold text-[#8B7A80] uppercase">
                           Mínimo
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Ubicación
                         </th>
                       </tr>
@@ -4024,19 +3935,19 @@ export default function Inventario() {
                     <tbody className="divide-y divide-[#F4E8EB]">
                       {bajoStock.map((item) => (
                         <tr key={item.id_inventario}>
-                          <td className="px-4 py-3 font-bold text-slate-800">
+                          <td className="px-4 py-3 font-bold text-[#392F33]">
                             {item.producto}
                           </td>
-                          <td className="px-4 py-3 text-slate-600">
+                          <td className="px-4 py-3 text-[#755F67]">
                             {item.categoria || '—'}
                           </td>
                           <td className="px-4 py-3 text-right font-bold text-red-700">
                             {formatoNumero(item.stock_actual)}
                           </td>
-                          <td className="px-4 py-3 text-right text-slate-600">
+                          <td className="px-4 py-3 text-right text-[#755F67]">
                             {formatoNumero(item.stock_minimo)}
                           </td>
-                          <td className="px-4 py-3 text-slate-600">
+                          <td className="px-4 py-3 text-[#755F67]">
                             {item.ubicacion || '—'}
                           </td>
                         </tr>
@@ -4053,36 +3964,76 @@ export default function Inventario() {
       {modalMovimientos && (
         <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center px-3 sm:px-4 py-4 sm:py-8 overflow-y-auto">
           <div
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-[#392F33]/60 backdrop-blur-sm"
             onClick={() => setModalMovimientos(false)}
           />
 
           <div className="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden my-auto">
             <div className="px-4 sm:px-6 py-5 border-b border-[#F0E2E7] flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <h2 className="text-lg sm:text-xl font-bold text-slate-800">
+                <h2 className="text-lg sm:text-xl font-bold text-[#392F33]">
                   Movimientos de inventario
                 </h2>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-[#8B7A80]">
                   Historial de entradas, salidas, ajustes y ventas.
                 </p>
               </div>
 
               <button
                 onClick={() => setModalMovimientos(false)}
-                className="w-10 h-10 rounded-2xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center shrink-0"
+                className="w-10 h-10 rounded-2xl bg-[#FFF9FA] hover:bg-[#F7EEF1] flex items-center justify-center shrink-0"
               >
                 <X size={20} />
               </button>
             </div>
 
+            <div className="border-b border-[#F0E2E7] bg-[#FFF9FA] px-4 py-3 sm:px-6">
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:items-end">
+                <div className="min-w-0">
+                  <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-[#9A858D]">
+                    Desde
+                  </label>
+                  <input
+                    type="date"
+                    value={fechaInicio}
+                    onChange={(e) => setFechaInicio(e.target.value)}
+                    className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3 py-2 text-sm font-bold text-[#5B4950] outline-none focus:ring-2 focus:ring-[#FBEAF0]"
+                  />
+                </div>
+
+                <div className="min-w-0">
+                  <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-[#9A858D]">
+                    Hasta
+                  </label>
+                  <input
+                    type="date"
+                    value={fechaFin}
+                    onChange={(e) => setFechaFin(e.target.value)}
+                    className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3 py-2 text-sm font-bold text-[#5B4950] outline-none focus:ring-2 focus:ring-[#FBEAF0]"
+                  />
+                </div>
+
+                {(fechaInicio || fechaFin) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFechaInicio('');
+                      setFechaFin('');
+                    }}
+                    className="col-span-2 rounded-xl bg-[#FFF0F4] px-3 py-2 text-xs font-black text-[#A84E6C] sm:col-span-1"
+                  >
+                    Quitar fechas
+                  </button>
+                )}
+              </div>
+            </div>
             <div className="p-4 sm:p-6 overflow-y-auto max-h-[75vh]">
               {cargandoMovimientos ? (
-                <div className="text-center py-10 text-slate-500">
+                <div className="text-center py-10 text-[#8B7A80]">
                   Cargando movimientos...
                 </div>
               ) : movimientos.length === 0 ? (
-                <div className="text-center py-10 text-slate-500">
+                <div className="text-center py-10 text-[#8B7A80]">
                   No hay movimientos registrados.
                 </div>
               ) : (
@@ -4090,31 +4041,31 @@ export default function Inventario() {
                   <table className="w-full min-w-[1150px]">
                     <thead className="bg-[#FFFAFB] border-b border-[#F0E2E7]">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Fecha
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Producto
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Tipo
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-right text-xs font-bold text-[#8B7A80] uppercase">
                           Cantidad
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-right text-xs font-bold text-[#8B7A80] uppercase">
                           Anterior
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-right text-xs font-bold text-[#8B7A80] uppercase">
                           Nuevo
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Referencia
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Proveedor
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Usuario
                         </th>
                       </tr>
@@ -4123,33 +4074,33 @@ export default function Inventario() {
                     <tbody className="divide-y divide-[#F4E8EB]">
                       {movimientos.map((mov) => (
                         <tr key={mov.id_movimiento}>
-                          <td className="px-4 py-3 text-sm text-slate-600">
+                          <td className="px-4 py-3 text-sm text-[#755F67]">
                             {formatoFecha(mov.fecha_movimiento)}
                           </td>
-                          <td className="px-4 py-3 font-semibold text-slate-800">
+                          <td className="px-4 py-3 font-semibold text-[#392F33]">
                             {mov.producto}
                           </td>
                           <td className="px-4 py-3">
-                            <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700">
+                            <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#FFF9FA] text-[#5B4950]">
                               {mov.tipo_movimiento}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-right font-bold text-slate-800">
+                          <td className="px-4 py-3 text-right font-bold text-[#392F33]">
                             {formatoNumero(mov.cantidad)}
                           </td>
-                          <td className="px-4 py-3 text-right text-slate-600">
+                          <td className="px-4 py-3 text-right text-[#755F67]">
                             {formatoNumero(mov.stock_anterior)}
                           </td>
                           <td className="px-4 py-3 text-right text-[#B85F7D] font-bold">
                             {formatoNumero(mov.stock_nuevo)}
                           </td>
-                          <td className="px-4 py-3 text-slate-600">
+                          <td className="px-4 py-3 text-[#755F67]">
                             {mov.referencia || '—'}
                           </td>
-                          <td className="px-4 py-3 text-slate-600">
+                          <td className="px-4 py-3 text-[#755F67]">
                             {mov.proveedor || '—'}
                           </td>
-                          <td className="px-4 py-3 text-slate-600">
+                          <td className="px-4 py-3 text-[#755F67]">
                             {mov.usuario || '—'}
                           </td>
                         </tr>

@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { LogOut, Store, Bell } from 'lucide-react';
+import {
+  LogOut,
+  Store,
+  Bell,
+  UserRound,
+  CheckCircle2,
+} from 'lucide-react';
+
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 
@@ -45,6 +52,7 @@ export default function Navbar() {
 
   const abrirAlertas = async () => {
     const nuevoEstado = !mostrarAlertas;
+
     setMostrarAlertas(nuevoEstado);
 
     if (nuevoEstado) {
@@ -74,24 +82,31 @@ export default function Navbar() {
   const clasePrioridad = (prioridad) => {
     switch (prioridad) {
       case 'URGENTE':
-        return 'bg-red-50 text-red-700 border-red-100';
+        return 'border-red-100 bg-red-50 text-red-700';
+
       case 'IMPORTANTE':
-        return 'bg-amber-50 text-amber-700 border-amber-100';
+        return 'border-amber-100 bg-amber-50 text-amber-700';
+
       default:
-        return 'bg-sky-50 text-sky-700 border-sky-100';
+        return 'border-[#F0DCE3] bg-[#FFF0F4] text-[#A84E6C]';
     }
   };
 
+  const inicialUsuario = String(usuario?.nombre || 'U')
+    .trim()
+    .charAt(0)
+    .toUpperCase();
+
   useEffect(() => {
-    if (usuario) {
+    if (!usuario) return undefined;
+
+    cargarTotalAlertas();
+
+    const intervalo = setInterval(() => {
       cargarTotalAlertas();
+    }, 30000);
 
-      const intervalo = setInterval(() => {
-        cargarTotalAlertas();
-      }, 30000);
-
-      return () => clearInterval(intervalo);
-    }
+    return () => clearInterval(intervalo);
   }, [usuario]);
 
   useEffect(() => {
@@ -112,73 +127,207 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className="min-h-16 sm:min-h-20 bg-white border-b border-slate-200 px-3 sm:px-4 lg:px-6 py-3 flex items-center justify-between gap-3 relative z-30">
-      <div className="min-w-0 flex-1">
-        <h2 className="text-base sm:text-xl font-bold text-slate-800 truncate">
-          Panel administrativo
-        </h2>
+    <header
+      className="
+        relative z-40
+        flex min-h-[72px] w-full items-center justify-between gap-3
+        border-b border-[#F0E2E7]
+        bg-white
+        px-3 py-3
+        shadow-[0_8px_30px_rgba(125,76,91,0.04)]
+        sm:min-h-[82px]
+        sm:px-5
+        lg:px-6
+      "
+    >
+      {/* =========================
+          IZQUIERDA
+      ========================== */}
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div
+          className="
+            flex h-11 w-11 shrink-0 items-center justify-center
+            rounded-2xl
+            bg-[#B85F7D]
+            text-white
+            shadow-lg shadow-[#B85F7D]/20
+            sm:h-12 sm:w-12
+          "
+        >
+          <Store size={22} />
+        </div>
 
-        <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-500 mt-1 min-w-0">
-          <Store size={16} className="shrink-0" />
-          <span className="truncate">
-            {sucursalPrincipal
-              ? `${sucursalPrincipal.nombre} (${sucursalPrincipal.clave})`
-              : 'Sin sucursal asignada'}
-          </span>
+        <div className="min-w-0">
+          <h2
+            className="
+              truncate
+              text-base font-black tracking-tight
+              text-[#33292D]
+              sm:text-xl
+            "
+          >
+            Panel administrativo
+          </h2>
+
+          <div
+            className="
+              mt-0.5
+              flex min-w-0 items-center gap-1.5
+              text-xs font-semibold
+              text-[#8B7A80]
+              sm:text-sm
+            "
+          >
+            <span className="truncate">
+              {sucursalPrincipal
+                ? `${sucursalPrincipal.nombre}${
+                    sucursalPrincipal.clave
+                      ? ` · ${sucursalPrincipal.clave}`
+                      : ''
+                  }`
+                : 'Sin sucursal asignada'}
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-4 relative shrink-0">
+      {/* =========================
+          DERECHA
+      ========================== */}
+      <div className="relative flex shrink-0 items-center gap-2 sm:gap-3">
+        {/* ALERTAS */}
         <div className="relative" ref={contenedorAlertasRef}>
           <button
             type="button"
             onClick={abrirAlertas}
-            className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-slate-100 hover:bg-sky-50 hover:text-sky-700 flex items-center justify-center transition"
+            className={`
+              relative
+              flex h-11 w-11 items-center justify-center
+              rounded-2xl
+              border
+              transition
+              ${
+                mostrarAlertas
+                  ? 'border-[#E3BCC9] bg-[#B85F7D] text-white shadow-lg shadow-[#B85F7D]/15'
+                  : 'border-[#F0E2E7] bg-[#FFF9FA] text-[#755F67] hover:border-[#E3BCC9] hover:bg-[#FFF0F4] hover:text-[#B85F7D]'
+              }
+            `}
             title="Alertas"
           >
             <Bell size={20} />
 
             {totalAlertas > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-slate-900 text-[11px] font-black flex items-center justify-center border-2 border-white">
+              <span
+                className="
+                  absolute -right-1.5 -top-1.5
+                  flex h-5 min-w-5 items-center justify-center
+                  rounded-full
+                  border-2 border-white
+                  bg-amber-400
+                  px-1
+                  text-[10px] font-black
+                  text-[#392F33]
+                  shadow-sm
+                "
+              >
                 {totalAlertas > 99 ? '99+' : totalAlertas}
               </span>
             )}
           </button>
 
+          {/* DROPDOWN ALERTAS */}
           {mostrarAlertas && (
             <div
               className="
-                fixed sm:absolute
-                left-3 right-3 sm:left-auto sm:right-0
-                top-[4.75rem] sm:top-14
-                sm:w-96
-                max-w-none sm:max-w-[calc(100vw-2rem)]
-                bg-white rounded-2xl sm:rounded-3xl
-                shadow-2xl border border-slate-100
-                z-50 overflow-hidden
+                fixed
+                left-3 right-3
+                top-[78px]
+                z-50
+                overflow-hidden
+                rounded-[1.75rem]
+                border border-[#F0E2E7]
+                bg-white
+                shadow-[0_25px_70px_rgba(72,43,52,0.18)]
+
+                sm:absolute
+                sm:left-auto
+                sm:right-0
+                sm:top-14
+                sm:w-[390px]
+                sm:max-w-[calc(100vw-2rem)]
               "
             >
-              <div className="px-4 sm:px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="font-bold text-slate-800">
-                    Alertas
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Notificaciones recientes del sistema
-                  </p>
+              {/* CABECERA ALERTAS */}
+              <div
+                className="
+                  flex items-start justify-between gap-3
+                  border-b border-[#F4EAED]
+                  bg-[#FFF9FA]
+                  px-4 py-4
+                  sm:px-5
+                "
+              >
+                <div className="flex min-w-0 items-start gap-3">
+                  <div
+                    className="
+                      flex h-10 w-10 shrink-0 items-center justify-center
+                      rounded-2xl
+                      bg-[#FFF0F4]
+                      text-[#B85F7D]
+                    "
+                  >
+                    <Bell size={19} />
+                  </div>
+
+                  <div className="min-w-0">
+                    <h3 className="font-black text-[#392F33]">
+                      Alertas
+                    </h3>
+
+                    <p className="mt-0.5 text-xs font-semibold text-[#9A858D]">
+                      Notificaciones recientes
+                    </p>
+                  </div>
                 </div>
 
                 {totalAlertas > 0 && (
-                  <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold shrink-0">
-                    {totalAlertas} nuevas
+                  <span
+                    className="
+                      shrink-0
+                      rounded-full
+                      bg-[#FFF0F4]
+                      px-3 py-1.5
+                      text-[11px] font-black
+                      text-[#A84E6C]
+                    "
+                  >
+                    {totalAlertas} nueva{totalAlertas !== 1 ? 's' : ''}
                   </span>
                 )}
               </div>
 
-              <div className="max-h-[65vh] sm:max-h-96 overflow-y-auto overscroll-contain">
+              {/* LISTA ALERTAS */}
+              <div className="max-h-[65vh] overflow-y-auto overscroll-contain sm:max-h-[430px]">
                 {alertas.length === 0 ? (
-                  <div className="p-6 text-center text-slate-500">
-                    No tienes alertas.
+                  <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
+                    <div
+                      className="
+                        flex h-14 w-14 items-center justify-center
+                        rounded-2xl
+                        bg-[#FFF0F4]
+                        text-[#B85F7D]
+                      "
+                    >
+                      <CheckCircle2 size={26} />
+                    </div>
+
+                    <p className="mt-4 font-black text-[#5B4950]">
+                      Todo está en orden
+                    </p>
+
+                    <p className="mt-1 text-sm font-semibold text-[#9A858D]">
+                      No tienes alertas por el momento.
+                    </p>
                   </div>
                 ) : (
                   alertas.map((alerta) => (
@@ -186,40 +335,105 @@ export default function Navbar() {
                       key={alerta.id_alerta}
                       type="button"
                       onClick={() => marcarComoLeida(alerta.id_alerta)}
-                      className={`w-full text-left px-4 sm:px-5 py-4 border-b border-slate-100 hover:bg-slate-50 transition ${
-                        !alerta.leida ? 'bg-sky-50/40' : 'bg-white'
-                      }`}
+                      className={`
+                        w-full
+                        border-b border-[#F4EAED]
+                        px-4 py-4
+                        text-left
+                        transition
+                        last:border-b-0
+                        hover:bg-[#FFF9FA]
+                        sm:px-5
+                        ${
+                          !alerta.leida
+                            ? 'bg-[#FFF5F7]'
+                            : 'bg-white'
+                        }
+                      `}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="font-bold text-slate-800 break-words">
-                            {alerta.titulo}
-                          </p>
-                          <p className="text-sm text-slate-600 mt-1 line-clamp-2 break-words">
-                            {alerta.mensaje}
-                          </p>
+                      <div className="flex items-start gap-3">
+                        {/* INDICADOR */}
+                        <div className="pt-1">
+                          <span
+                            className={`
+                              block h-2.5 w-2.5 rounded-full
+                              ${
+                                !alerta.leida
+                                  ? 'bg-[#B85F7D]'
+                                  : 'bg-[#DDD0D4]'
+                              }
+                            `}
+                          />
                         </div>
 
-                        {!alerta.leida && (
-                          <span className="w-2.5 h-2.5 rounded-full bg-sky-600 mt-2 shrink-0" />
-                        )}
-                      </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <p
+                              className={`
+                                break-words text-sm
+                                text-[#392F33]
+                                ${
+                                  !alerta.leida
+                                    ? 'font-black'
+                                    : 'font-bold'
+                                }
+                              `}
+                            >
+                              {alerta.titulo}
+                            </p>
+                          </div>
 
-                      <div className="mt-3 flex flex-col xs:flex-row xs:items-center xs:justify-between gap-2">
-                        <span
-                          className={`w-fit text-[11px] font-bold px-2.5 py-1 rounded-full border ${clasePrioridad(
-                            alerta.prioridad
-                          )}`}
-                        >
-                          {alerta.prioridad}
-                        </span>
+                          <p
+                            className="
+                              mt-1
+                              line-clamp-2
+                              break-words
+                              text-xs font-semibold
+                              leading-relaxed
+                              text-[#8B7A80]
+                              sm:text-sm
+                            "
+                          >
+                            {alerta.mensaje}
+                          </p>
 
-                        <span className="text-[11px] text-slate-400">
-                          {new Date(alerta.fecha_creacion).toLocaleString('es-MX', {
-                            dateStyle: 'short',
-                            timeStyle: 'short',
-                          })}
-                        </span>
+                          <div
+                            className="
+                              mt-3
+                              flex flex-col gap-2
+                              sm:flex-row
+                              sm:items-center
+                              sm:justify-between
+                            "
+                          >
+                            <span
+                              className={`
+                                w-fit
+                                rounded-full
+                                border
+                                px-2.5 py-1
+                                text-[10px] font-black
+                                ${clasePrioridad(alerta.prioridad)}
+                              `}
+                            >
+                              {alerta.prioridad}
+                            </span>
+
+                            <span
+                              className="
+                                text-[10px] font-semibold
+                                text-[#B09CA3]
+                              "
+                            >
+                              {new Date(
+                                alerta.fecha_creacion
+                              ).toLocaleString('es-MX', {
+                                dateStyle: 'short',
+                                timeStyle: 'short',
+                              })}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </button>
                   ))
@@ -229,18 +443,60 @@ export default function Navbar() {
           )}
         </div>
 
-        <div className="text-right hidden md:block max-w-[180px]">
-          <p className="font-semibold text-slate-800 truncate">
-            {usuario?.nombre}
-          </p>
-          <p className="text-sm text-slate-500 truncate">
-            {usuario?.rol}
-          </p>
+        {/* =========================
+            USUARIO
+        ========================== */}
+        <div
+          className="
+            hidden
+            items-center gap-3
+            rounded-2xl
+            border border-[#F0E2E7]
+            bg-[#FFF9FA]
+            py-1.5 pl-1.5 pr-3
+            md:flex
+          "
+        >
+          <div
+            className="
+              flex h-9 w-9 shrink-0 items-center justify-center
+              rounded-xl
+              bg-[#FFF0F4]
+              text-sm font-black
+              text-[#B85F7D]
+            "
+          >
+            {inicialUsuario || <UserRound size={17} />}
+          </div>
+
+          <div className="max-w-[155px] min-w-0">
+            <p className="truncate text-sm font-black text-[#392F33]">
+              {usuario?.nombre || 'Usuario'}
+            </p>
+
+            <p className="truncate text-[11px] font-bold text-[#9A858D]">
+              {usuario?.rol || 'Sin rol'}
+            </p>
+          </div>
         </div>
 
+        {/* =========================
+            CERRAR SESIÓN
+        ========================== */}
         <button
+          type="button"
           onClick={handleLogout}
-          className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-slate-100 hover:bg-red-50 hover:text-red-600 flex items-center justify-center transition"
+          className="
+            flex h-11 w-11 items-center justify-center
+            rounded-2xl
+            border border-[#F0E2E7]
+            bg-[#FFF9FA]
+            text-[#755F67]
+            transition
+            hover:border-red-100
+            hover:bg-red-50
+            hover:text-red-600
+          "
           title="Cerrar sesión"
         >
           <LogOut size={20} />

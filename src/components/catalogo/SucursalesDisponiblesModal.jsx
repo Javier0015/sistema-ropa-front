@@ -142,7 +142,7 @@ export default function SucursalesDisponiblesModal({
                                             </h4>
 
                                             <p className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">
-                                                Farmacias Shaddai
+                                                Punto de venta
                                             </p>
                                         </div>
                                     </div>

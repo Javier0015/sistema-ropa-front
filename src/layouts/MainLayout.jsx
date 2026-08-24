@@ -119,7 +119,7 @@ export default function MainLayout() {
       case 'IMPORTANTE':
         return 'bg-amber-50 text-amber-700 border-amber-100';
       default:
-        return 'bg-sky-50 text-sky-700 border-sky-100';
+        return 'bg-[#FFF0F4] text-[#A84E6C] border-[#F0DCE3]';
     }
   };
 
@@ -438,30 +438,30 @@ export default function MainLayout() {
         max-w-none lg:max-w-[calc(100vw-2rem)]
         max-h-[calc(100vh-5.5rem)] lg:max-h-[calc(100vh-6rem)]
         bg-white rounded-2xl lg:rounded-3xl
-        shadow-2xl border border-slate-100
+        shadow-2xl border border-[#F0E2E7]
         z-50 overflow-hidden
         flex flex-col
       "
     >
-      <div className="px-4 sm:px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3 shrink-0">
+      <div className="px-4 sm:px-5 py-4 border-b border-[#F0E2E7] flex items-start justify-between gap-3 shrink-0">
         <div className="min-w-0">
-          <h3 className="font-bold text-slate-800">Chat interno</h3>
-          <p className="text-xs text-slate-500">
+          <h3 className="font-bold text-[#392F33]">Chat interno</h3>
+          <p className="text-xs text-[#8B7A80]">
             Mensajes entre usuarios del sistema
           </p>
         </div>
 
         {totalMensajes > 0 && (
-          <span className="px-3 py-1 rounded-full bg-sky-100 text-sky-700 text-xs font-bold shrink-0">
+          <span className="px-3 py-1 rounded-full bg-[#FBE7ED] text-[#A84E6C] text-xs font-bold shrink-0">
             {totalMensajes} nuevos
           </span>
         )}
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 bg-slate-50 space-y-3 overscroll-contain">
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 bg-[#FFFAFB] space-y-3 overscroll-contain">
         {mensajesChat.length === 0 ? (
-          <div className="min-h-72 flex flex-col items-center justify-center text-center text-slate-500">
-            <MessageCircle size={34} className="mb-3 text-slate-400" />
+          <div className="min-h-72 flex flex-col items-center justify-center text-center text-[#8B7A80]">
+            <MessageCircle size={34} className="mb-3 text-[#B09CA3]" />
             <p className="font-semibold">Sin mensajes</p>
             <p className="text-sm">Escribe el primer mensaje del chat.</p>
           </div>
@@ -479,7 +479,7 @@ export default function MainLayout() {
               <div key={mensaje.id_mensaje}>
                 {mostrarSeparadorFecha && (
                   <div className="sticky top-2 z-10 flex justify-center my-3">
-                    <span className="px-3 py-1 rounded-full bg-slate-200/95 text-slate-700 text-xs font-bold shadow-sm backdrop-blur border border-slate-300/40">
+                    <span className="px-3 py-1 rounded-full bg-[#F7EEF1]/95 text-[#5B4950] text-xs font-bold shadow-sm backdrop-blur border border-[#EEDFE4]/70">
                       {obtenerEtiquetaFechaChat(mensaje.fecha_envio)}
                     </span>
                   </div>
@@ -491,12 +491,12 @@ export default function MainLayout() {
                 >
                   <div
                     className={`max-w-[90%] sm:max-w-[82%] rounded-2xl px-4 py-3 shadow-sm min-w-0 ${mensaje.es_mio
-                        ? 'bg-sky-700 text-white rounded-br-md'
-                        : 'bg-white text-slate-800 border border-slate-100 rounded-bl-md'
+                        ? 'bg-[#B85F7D] text-white rounded-br-md'
+                        : 'bg-white text-[#392F33] border border-[#F0E2E7] rounded-bl-md'
                       }`}
                   >
                     {!mensaje.es_mio && (
-                      <p className="text-xs font-bold text-sky-700 mb-1 break-words">
+                      <p className="text-xs font-bold text-[#A84E6C] mb-1 break-words">
                         {mensaje.usuario_emisor || 'Usuario'}
                       </p>
                     )}
@@ -508,15 +508,15 @@ export default function MainLayout() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-2">
                       <span
                         className={`w-fit text-[10px] px-2 py-0.5 rounded-full break-words ${mensaje.es_mio
-                            ? 'bg-white/15 text-sky-50'
-                            : 'bg-slate-100 text-slate-500'
+                            ? 'bg-white/15 text-white/85'
+                            : 'bg-[#FFF9FA] text-[#8B7A80]'
                           }`}
                       >
                         {obtenerEtiquetaDestino(mensaje)}
                       </span>
 
                       <span
-                        className={`text-[10px] ${mensaje.es_mio ? 'text-sky-100' : 'text-slate-400'
+                        className={`text-[10px] ${mensaje.es_mio ? 'text-white/70' : 'text-[#B09CA3]'
                           }`}
                       >
                         {formatoHoraChat(mensaje.fecha_envio)}
@@ -530,12 +530,12 @@ export default function MainLayout() {
         )}
       </div>
 
-      <div className="px-3 sm:px-4 pt-4 border-t border-slate-100 bg-white shrink-0">
+      <div className="px-3 sm:px-4 pt-4 border-t border-[#F0E2E7] bg-white shrink-0">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <select
             value={tipoDestinoChat}
             onChange={(e) => limpiarDestinoChat(e.target.value)}
-            className="w-full min-w-0 px-3 py-2 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm bg-white"
+            className="w-full min-w-0 px-3 py-2 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#E5AFC0] text-sm bg-white"
           >
             <option value="TODOS">Enviar a todos</option>
             <option value="ROL">Enviar por rol</option>
@@ -547,7 +547,7 @@ export default function MainLayout() {
             <select
               value={destinoRolChat}
               onChange={(e) => setDestinoRolChat(e.target.value)}
-              className="w-full min-w-0 px-3 py-2 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm bg-white"
+              className="w-full min-w-0 px-3 py-2 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#E5AFC0] text-sm bg-white"
             >
               <option value="">Selecciona rol</option>
               {rolesDisponibles.map((rol) => (
@@ -562,7 +562,7 @@ export default function MainLayout() {
             <select
               value={destinoSucursalChat}
               onChange={(e) => setDestinoSucursalChat(e.target.value)}
-              className="w-full min-w-0 px-3 py-2 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm bg-white"
+              className="w-full min-w-0 px-3 py-2 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#E5AFC0] text-sm bg-white"
             >
               <option value="">Selecciona sucursal</option>
               {sucursalesChat.map((sucursal) => (
@@ -577,7 +577,7 @@ export default function MainLayout() {
             <select
               value={destinoUsuarioChat}
               onChange={(e) => setDestinoUsuarioChat(e.target.value)}
-              className="w-full min-w-0 px-3 py-2 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm bg-white"
+              className="w-full min-w-0 px-3 py-2 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#E5AFC0] text-sm bg-white"
             >
               <option value="">Selecciona usuario</option>
               {usuariosChat.map((u) => (
@@ -598,7 +598,7 @@ export default function MainLayout() {
           value={mensajeChat}
           onChange={(e) => setMensajeChat(e.target.value)}
           placeholder="Escribe un mensaje..."
-          className="flex-1 min-w-0 px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm"
+          className="flex-1 min-w-0 px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#E5AFC0] text-sm"
         />
 
         <button
@@ -608,7 +608,7 @@ export default function MainLayout() {
             !mensajeChat.trim() ||
             !validarDestinoChat()
           }
-          className="w-11 h-11 rounded-2xl bg-sky-700 hover:bg-sky-800 text-white flex items-center justify-center transition disabled:opacity-50 shrink-0"
+          className="w-11 h-11 rounded-2xl bg-[#B85F7D] hover:bg-[#A84E6C] text-white flex items-center justify-center transition disabled:opacity-50 shrink-0"
           title="Enviar mensaje"
         >
           <Send size={18} />
@@ -627,16 +627,16 @@ export default function MainLayout() {
         max-w-none lg:max-w-[calc(100vw-2rem)]
         max-h-[calc(100vh-5.5rem)] lg:max-h-[calc(100vh-6rem)]
         bg-white rounded-2xl lg:rounded-3xl
-        shadow-2xl border border-slate-100
+        shadow-2xl border border-[#F0E2E7]
         z-50 overflow-hidden
         flex flex-col
       `}
     >
-      <div className="px-4 sm:px-5 py-4 border-b border-slate-100 shrink-0">
+      <div className="px-4 sm:px-5 py-4 border-b border-[#F0E2E7] shrink-0">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="font-bold text-slate-800">Alertas</h3>
-            <p className="text-xs text-slate-500">
+            <h3 className="font-bold text-[#392F33]">Alertas</h3>
+            <p className="text-xs text-[#8B7A80]">
               {escritorio
                 ? 'Notificaciones recientes de los últimos 7 días'
                 : 'Últimos 7 días'}
@@ -654,7 +654,7 @@ export default function MainLayout() {
           <button
             type="button"
             onClick={marcarTodasAlertasComoLeidas}
-            className="mt-3 w-full inline-flex items-center justify-center px-4 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition"
+            className="mt-3 w-full inline-flex items-center justify-center px-4 py-2 rounded-2xl bg-[#FFF9FA] hover:bg-[#F7EEF1] text-[#5B4950] text-xs font-bold transition"
           >
             Marcar todas como leídas
           </button>
@@ -663,7 +663,7 @@ export default function MainLayout() {
 
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
         {alertas.length === 0 ? (
-          <div className="p-6 text-center text-slate-500">
+          <div className="p-6 text-center text-[#8B7A80]">
             No tienes alertas.
           </div>
         ) : (
@@ -672,21 +672,21 @@ export default function MainLayout() {
               key={alerta.id_alerta}
               type="button"
               onClick={() => marcarComoLeida(alerta.id_alerta)}
-              className={`w-full text-left px-4 sm:px-5 py-4 border-b border-slate-100 hover:bg-slate-50 transition ${!alerta.leida ? 'bg-sky-50/40' : 'bg-white'
+              className={`w-full text-left px-4 sm:px-5 py-4 border-b border-[#F0E2E7] hover:bg-[#FFFAFB] transition ${!alerta.leida ? 'bg-[#FFF5F7]' : 'bg-white'
                 }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-bold text-slate-800 break-words">
+                  <p className="font-bold text-[#392F33] break-words">
                     {alerta.titulo}
                   </p>
-                  <p className="text-sm text-slate-600 mt-1 line-clamp-2 break-words">
+                  <p className="text-sm text-[#755F67] mt-1 line-clamp-2 break-words">
                     {alerta.mensaje}
                   </p>
                 </div>
 
                 {!alerta.leida && (
-                  <span className="w-2.5 h-2.5 rounded-full bg-sky-600 mt-2 shrink-0" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#B85F7D] mt-2 shrink-0" />
                 )}
               </div>
 
@@ -699,7 +699,7 @@ export default function MainLayout() {
                   {alerta.prioridad}
                 </span>
 
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-[#B09CA3]">
                   {new Date(alerta.fecha_creacion).toLocaleString('es-MX', {
                     dateStyle: 'short',
                     timeStyle: 'short',
@@ -714,13 +714,13 @@ export default function MainLayout() {
   );
 
   return (
-    <div className="h-screen bg-slate-100 flex overflow-hidden">
+    <div className="h-screen bg-[#FFF9FA] flex overflow-hidden">
       <Sidebar />
 
       {menuMovilAbierto && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div
-            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-[#392F33]/60 backdrop-blur-sm"
             onClick={() => setMenuMovilAbierto(false)}
           />
 
@@ -734,20 +734,20 @@ export default function MainLayout() {
       )}
 
       <div className="flex-1 min-w-0 h-screen flex flex-col overflow-hidden">
-        <header className="lg:hidden bg-white border-b border-slate-200 px-3 sm:px-4 py-3 shrink-0 z-40">
+        <header className="lg:hidden bg-white border-b border-[#F0E2E7] px-3 sm:px-4 py-3 shrink-0 z-40 shadow-[0_8px_30px_rgba(125,76,91,0.04)]">
           <div className="flex items-center justify-between gap-2 sm:gap-3">
             <button
               onClick={() => setMenuMovilAbierto(true)}
-              className="w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center shrink-0"
+              className="w-11 h-11 rounded-2xl bg-[#B85F7D] text-white flex items-center justify-center shrink-0"
             >
               <Menu size={22} />
             </button>
 
             <div className="flex-1 text-right min-w-0">
-              <p className="text-sm font-bold text-slate-800 truncate">
-                Farmacias Shaddai 
+              <p className="text-sm font-bold text-[#392F33] truncate">
+                Punto de venta 
               </p>
-              <p className="text-xs text-slate-500 truncate">
+              <p className="text-xs text-[#8B7A80] truncate">
                 {usuario?.nombre || usuario?.usuario || 'Farmacia multi-sucursal'}
               </p>
             </div>
@@ -756,7 +756,7 @@ export default function MainLayout() {
               <button
                 type="button"
                 onClick={abrirChat}
-                className="relative w-11 h-11 rounded-2xl bg-slate-100 hover:bg-sky-50 hover:text-sky-700 flex items-center justify-center transition"
+                className="relative w-11 h-11 rounded-2xl bg-[#FFF9FA] hover:bg-[#FFF0F4] hover:text-[#B85F7D] flex items-center justify-center transition"
                 title="Chat"
               >
                 <MessageCircle size={20} />
@@ -775,13 +775,13 @@ export default function MainLayout() {
               <button
                 type="button"
                 onClick={abrirAlertas}
-                className="relative w-11 h-11 rounded-2xl bg-slate-100 hover:bg-sky-50 hover:text-sky-700 flex items-center justify-center transition"
+                className="relative w-11 h-11 rounded-2xl bg-[#FFF9FA] hover:bg-[#FFF0F4] hover:text-[#B85F7D] flex items-center justify-center transition"
                 title="Alertas"
               >
                 <Bell size={20} />
 
                 {totalAlertas > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-slate-900 text-[11px] font-black flex items-center justify-center border-2 border-white">
+                  <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-[#33292D] text-[11px] font-black flex items-center justify-center border-2 border-white">
                     {totalAlertas > 99 ? '99+' : totalAlertas}
                   </span>
                 )}
@@ -800,10 +800,10 @@ export default function MainLayout() {
           </div>
         </header>
 
-        <header className="hidden lg:flex bg-white border-b border-slate-200 px-8 py-4 items-center justify-between shrink-0 z-30">
+        <header className="hidden lg:flex bg-white border-b border-[#F0E2E7] px-8 py-4 items-center justify-between shrink-0 z-30 shadow-[0_8px_30px_rgba(125,76,91,0.04)]">
           <div className="min-w-0">
-            <p className="text-sm text-slate-500">Sesión activa</p>
-            <h2 className="text-lg font-bold text-slate-800 truncate">
+            <p className="text-sm text-[#8B7A80]">Sesión activa</p>
+            <h2 className="text-lg font-bold text-[#392F33] truncate">
              Hola, {usuario?.nombre || usuario?.usuario || 'Usuario'}
             </h2>
           </div>
@@ -813,7 +813,7 @@ export default function MainLayout() {
               <button
                 type="button"
                 onClick={abrirChat}
-                className="relative w-11 h-11 rounded-2xl bg-slate-100 hover:bg-sky-50 hover:text-sky-700 flex items-center justify-center transition"
+                className="relative w-11 h-11 rounded-2xl bg-[#FFF9FA] hover:bg-[#FFF0F4] hover:text-[#B85F7D] flex items-center justify-center transition"
                 title="Chat"
               >
                 <MessageCircle size={21} />
@@ -832,13 +832,13 @@ export default function MainLayout() {
               <button
                 type="button"
                 onClick={abrirAlertas}
-                className="relative w-11 h-11 rounded-2xl bg-slate-100 hover:bg-sky-50 hover:text-sky-700 flex items-center justify-center transition"
+                className="relative w-11 h-11 rounded-2xl bg-[#FFF9FA] hover:bg-[#FFF0F4] hover:text-[#B85F7D] flex items-center justify-center transition"
                 title="Alertas"
               >
                 <Bell size={21} />
 
                 {totalAlertas > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-slate-900 text-[11px] font-black flex items-center justify-center border-2 border-white">
+                  <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-[#33292D] text-[11px] font-black flex items-center justify-center border-2 border-white">
                     {totalAlertas > 99 ? '99+' : totalAlertas}
                   </span>
                 )}
@@ -848,10 +848,10 @@ export default function MainLayout() {
             </div>
 
             <div className="text-right max-w-[180px]">
-              <p className="text-sm font-bold text-slate-800 truncate">
+              <p className="text-sm font-bold text-[#392F33] truncate">
                 {usuario?.rol || 'Sin rol'}
               </p>
-              <p className="text-xs text-slate-500">Farmacias Shaddai</p>
+              <p className="text-xs text-[#8B7A80]">Punto de venta</p>
             </div>
 
             <button
@@ -864,7 +864,7 @@ export default function MainLayout() {
           </div>
         </header>
 
-        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8">
+        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-[#FFF9FA] p-4 md:p-6 lg:p-8">
           <Outlet />
         </main>
       </div>

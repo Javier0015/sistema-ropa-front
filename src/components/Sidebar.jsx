@@ -133,7 +133,7 @@ const secciones = [
       },
       {
         to: '/app/compras',
-        label: 'Compras',
+        label: 'Compras a proveedores',
         icon: ClipboardList,
         modulo: 'compras',
       },

@@ -1,10 +1,6 @@
 export const permisosPorRol = {
   ROOT: [
     'dashboard',
-  ],
-
-  SUPER_ADMIN: [
-    'dashboard',
     'productos',
     'inventario',
     //'stock-sucursales',
@@ -29,6 +25,34 @@ export const permisosPorRol = {
     'control-sanitario',
     'catalogo-servicios-clinicos',
     'configuracion-ticket',
+  ],
+
+  SUPER_ADMIN: [
+    'dashboard',
+    'productos',
+    'inventario',
+    //'stock-sucursales',
+    'pos',
+    'caja',
+    'cajas',
+    'ventas',
+    'ventas-servicios-clinicos',
+    'proveedores',
+    'compras',
+    'usuarios',
+    'tarjetas-puntos',
+    //'sucursales',
+    'categorias',
+    'alertas',
+    'puntos',
+    'recetas-admin',
+    'ofertas',
+    'catalogo-admin',
+    'fila-espera',
+    'reportes-cierre-caja',
+    'control-sanitario',
+    'catalogo-servicios-clinicos',
+    //'configuracion-ticket',
   ],
 
   CAJERO: [

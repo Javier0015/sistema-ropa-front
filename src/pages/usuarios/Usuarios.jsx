@@ -59,6 +59,10 @@ const normalizarRol = (rol) => {
     .toUpperCase();
 };
 
+const ROL_ROOT = 'ROOT';
+
+const esRolRoot = (rol) => normalizarRol(rol) === ROL_ROOT;
+
 export default function Usuarios() {
   const { usuario: usuarioSesion } = useAuth();
 
@@ -76,6 +80,22 @@ export default function Usuarios() {
   const [mostrarPassword, setMostrarPassword] = useState(false);
 
   const [form, setForm] = useState(formInicial);
+
+  const sesionEsRoot = esRolRoot(usuarioSesion?.rol);
+
+  const rolesPermitidos = useMemo(() => {
+    if (sesionEsRoot) return roles;
+
+    return roles.filter((rol) => !esRolRoot(rol.nombre));
+  }, [roles, sesionEsRoot]);
+
+  const puedeGestionarUsuario = (item) => {
+    if (!item) return false;
+
+    if (sesionEsRoot) return true;
+
+    return !esRolRoot(item.rol);
+  };
 
   // =========================================================
   // RESUMEN
@@ -144,6 +164,7 @@ export default function Usuarios() {
     const valor = normalizarRol(rol);
 
     const nombres = {
+      ROOT: 'ROOT',
       SUPER_ADMIN: 'Super administrador',
       ADMIN_SUCURSAL: 'Administrador de sucursal',
       CAJERO: 'Cajero',
@@ -179,11 +200,20 @@ export default function Usuarios() {
       if (data.ok) {
         const lista = data.usuarios || [];
 
-        setUsuarios(
-          lista.filter(
-            (item) => !ROLES_MEDICOS.has(normalizarRol(item.rol))
-          )
-        );
+        const usuariosVisibles = lista.filter((item) => {
+          const rol = normalizarRol(item.rol);
+
+          // Oculta roles médicos de esta vista.
+          if (ROLES_MEDICOS.has(rol)) return false;
+
+          // ROOT puede ver cuentas ROOT.
+          if (sesionEsRoot) return true;
+
+          // SUPER_ADMIN y cualquier otro rol no deben ver cuentas ROOT.
+          return !esRolRoot(rol);
+        });
+
+        setUsuarios(usuariosVisibles);
       }
     } catch (error) {
       console.error(error);
@@ -257,13 +287,13 @@ export default function Usuarios() {
   // =========================================================
 
   const abrirNuevo = () => {
-    const rolCajero = roles.find(
+    const rolCajero = rolesPermitidos.find(
       (r) => normalizarRol(r.nombre) === 'CAJERO'
     );
 
     setForm({
       ...formInicial,
-      id_rol: rolCajero?.id_rol || roles[0]?.id_rol || '',
+      id_rol: rolCajero?.id_rol || rolesPermitidos[0]?.id_rol || '',
       sucursales: [],
     });
 
@@ -274,6 +304,16 @@ export default function Usuarios() {
   };
 
   const abrirEditar = (usuario) => {
+    if (!puedeGestionarUsuario(usuario)) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Acceso restringido',
+        text: 'Solo una cuenta ROOT puede modificar a otro usuario ROOT.',
+        confirmButtonColor: '#AD526F',
+      });
+      return;
+    }
+
     setUsuarioEditando(usuario);
     setModoEdicion(true);
     setMostrarPassword(false);
@@ -400,6 +440,21 @@ export default function Usuarios() {
       return false;
     }
 
+    const rolSeleccionado = roles.find(
+      (rol) => Number(rol.id_rol) === Number(form.id_rol)
+    );
+
+    if (!sesionEsRoot && esRolRoot(rolSeleccionado?.nombre)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Rol no permitido',
+        text: 'Solo una cuenta ROOT puede asignar el rol ROOT.',
+        confirmButtonColor: '#AD526F',
+      });
+
+      return false;
+    }
+
     if (
       !Array.isArray(form.sucursales) ||
       form.sucursales.length === 0
@@ -506,6 +561,16 @@ export default function Usuarios() {
   // =========================================================
 
   const desactivarUsuario = async (usuario) => {
+    if (!puedeGestionarUsuario(usuario)) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Acceso restringido',
+        text: 'Solo una cuenta ROOT puede desactivar a otro usuario ROOT.',
+        confirmButtonColor: '#AD526F',
+      });
+      return;
+    }
+
     if (
       Number(usuario.id_usuario) ===
       Number(usuarioSesion?.id_usuario)
@@ -776,7 +841,9 @@ export default function Usuarios() {
                   <button
                     type="button"
                     onClick={() => abrirEditar(item)}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#FBEAF0] px-4 py-3 font-black text-[#A84E6C] transition hover:bg-[#F5DDE5]"
+                    disabled={!puedeGestionarUsuario(item)}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#FBEAF0] px-4 py-3 font-black text-[#A84E6C] transition hover:bg-[#F5DDE5] disabled:cursor-not-allowed disabled:opacity-35"
+                    title={puedeGestionarUsuario(item) ? 'Editar' : 'Solo ROOT puede editar esta cuenta'}
                   >
                     <Pencil size={17} />
                     Editar
@@ -786,8 +853,9 @@ export default function Usuarios() {
                     type="button"
                     onClick={() => desactivarUsuario(item)}
                     disabled={
+                      !puedeGestionarUsuario(item) ||
                       Number(item.id_usuario) ===
-                      Number(usuarioSesion?.id_usuario)
+                        Number(usuarioSesion?.id_usuario)
                     }
                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-50 px-4 py-3 font-black text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-35"
                   >
@@ -914,8 +982,9 @@ export default function Usuarios() {
                         <button
                           type="button"
                           onClick={() => abrirEditar(item)}
-                          className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FBEAF0] text-[#A84E6C] transition hover:bg-[#F5DDE5]"
-                          title="Editar"
+                          disabled={!puedeGestionarUsuario(item)}
+                          className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FBEAF0] text-[#A84E6C] transition hover:bg-[#F5DDE5] disabled:cursor-not-allowed disabled:opacity-35"
+                          title={puedeGestionarUsuario(item) ? 'Editar' : 'Solo ROOT puede editar esta cuenta'}
                         >
                           <Pencil size={16} />
                         </button>
@@ -924,8 +993,9 @@ export default function Usuarios() {
                           type="button"
                           onClick={() => desactivarUsuario(item)}
                           disabled={
+                            !puedeGestionarUsuario(item) ||
                             Number(item.id_usuario) ===
-                            Number(usuarioSesion?.id_usuario)
+                              Number(usuarioSesion?.id_usuario)
                           }
                           className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-50 text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-35"
                           title={
@@ -1119,7 +1189,7 @@ export default function Usuarios() {
                           Selecciona rol
                         </option>
 
-                        {roles.map((rol) => (
+                        {rolesPermitidos.map((rol) => (
                           <option
                             key={rol.id_rol}
                             value={rol.id_rol}
@@ -1316,6 +1386,10 @@ export default function Usuarios() {
 
       <style>
         {`
+          .swal2-container {
+            z-index: 20000 !important;
+          }
+
           @media (prefers-reduced-motion: reduce) {
             *,
             *::before,

@@ -2,20 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import Swal from 'sweetalert2';
 import {
   Wallet,
-  RefreshCw,
   LockKeyhole,
   UnlockKeyhole,
   PlusCircle,
   MinusCircle,
-  History,
   X,
   Save,
   Calculator,
-  DollarSign,
   AlertTriangle,
   Printer,
   FileText,
-  Sparkles,
 } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
@@ -56,16 +52,6 @@ const denominacionesCaja = [
   { tipo: 'Moneda', valor: 1 },
   { tipo: 'Moneda', valor: 0.5 },
 ];
-
-const METODOS_PAGO = ['EFECTIVO', 'TARJETA', 'TRANSFERENCIA', 'PUNTOS'];
-
-const CONFIGURACION_IMPRESION_LOCAL = {
-  url: 'http://localhost:3030',
-  apiKey: 'shaddai-printer-2026',
-};
-
-const API_IMPRESION_LOCAL = CONFIGURACION_IMPRESION_LOCAL.url;
-const PRINTER_KEY = CONFIGURACION_IMPRESION_LOCAL.apiKey;
 
 const normalizarMetodoPago = (metodo) => {
   const valor = String(metodo || '').trim().toUpperCase();
@@ -892,8 +878,6 @@ export default function Caja() {
   const [cargandoReporteCierre, setCargandoReporteCierre] = useState(false);
 
   const [cerrandoCaja, setCerrandoCaja] = useState(false);
-  const [abriendoCajon, setAbriendoCajon] = useState(false);
-
 
   const formatoMoneda = (valor) => {
     return Number(valor || 0).toLocaleString('es-MX', {
@@ -933,8 +917,6 @@ export default function Caja() {
   const ventasTarjeta = Number(resumen?.ventas_tarjeta || 0);
   const ventasTransferencia = Number(resumen?.ventas_transferencia || 0);
   const ventasPuntos = Number(resumen?.ventas_puntos || resumen?.ventas_puntos_canjeados || 0);
-  const puntosGanados = Number(resumen?.puntos_ganados || 0);
-
   const totalNoEfectivo = ventasTarjeta + ventasTransferencia;
   const totalVendido =
     resumen?.ventas_total !== undefined && resumen?.ventas_total !== null
@@ -1225,98 +1207,6 @@ export default function Caja() {
       cargarSesionAbierta();
     }
   }, [idCaja]);
-
-  const refrescarTodo = async () => {
-    await cargarCajas();
-    await cargarSesionAbierta();
-  };
-
-  const abrirCajonFisico = async () => {
-    /*if (!sesionAbierta) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Caja cerrada',
-        text: 'Primero debes abrir una sesión de caja.',
-      });
-      return;
-    }*/
-
-    const confirmacion = await Swal.fire({
-      icon: 'question',
-      title: '¿Abrir el cajón?',
-      text: 'Se enviará el comando de apertura a la caja registradora.',
-      showCancelButton: true,
-      confirmButtonText: 'Sí, abrir cajón',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#059669',
-      cancelButtonColor: '#64748b',
-    });
-
-    if (!confirmacion.isConfirmed) return;
-
-    try {
-      setAbriendoCajon(true);
-
-      Swal.fire({
-        title: 'Abriendo cajón...',
-        html: `
-          <div style="text-align:center">
-            <p>Enviando el comando a la caja registradora.</p>
-          </div>
-        `,
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        showConfirmButton: false,
-        didOpen: () => {
-          Swal.showLoading();
-        },
-      });
-
-      const response = await fetch(`${API_IMPRESION_LOCAL}/abrir-caja`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-printer-key': PRINTER_KEY,
-        },
-      });
-
-      let data = {};
-
-      try {
-        data = await response.json();
-      } catch {
-        data = {};
-      }
-
-      if (!response.ok || !data.ok) {
-        throw new Error(
-          data.message ||
-          data.mensaje ||
-          'No se pudo abrir el cajón.'
-        );
-      }
-
-      Swal.fire({
-        icon: 'success',
-        title: 'Cajón abierto',
-        text: 'El cajón fue abierto correctamente.',
-        timer: 1200,
-        showConfirmButton: false,
-      });
-    } catch (error) {
-      console.error('Error al abrir el cajón:', error);
-
-      Swal.fire({
-        icon: 'error',
-        title: 'No se pudo abrir el cajón',
-        text:
-          error.message ||
-          'Verifica que la aplicación local de impresión esté abierta y que el cajón esté conectado.',
-      });
-    } finally {
-      setAbriendoCajon(false);
-    }
-  };
 
   const abrirModalAbrir = () => {
     setConteoEfectivoApertura({});
@@ -1684,506 +1574,273 @@ export default function Caja() {
   };
 
   return (
-    <div className="w-full max-w-full overflow-hidden space-y-5 sm:space-y-6 pb-8">
-      <section className="relative overflow-hidden rounded-[2rem] border border-[#F0E2E7] bg-white p-5 shadow-[0_16px_50px_rgba(118,76,91,0.06)] sm:p-6">
-        <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#F7DCE4]/70 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 left-[18%] h-52 w-52 rounded-full bg-[#FCEEF2]/80 blur-3xl" />
-
-        <div className="relative flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex min-w-0 items-start gap-4">
-            <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-[1.15rem] bg-[#FBEAF0] text-[#B85F7D]">
-              <Wallet size={24} />
+    <div className="w-full max-w-full space-y-4 overflow-hidden pb-8 sm:space-y-5">
+      {/* ENCABEZADO SIMPLE */}
+      <section className="rounded-[1.75rem] border border-[#F0E2E7] bg-white p-4 shadow-[0_12px_36px_rgba(118,76,91,0.05)] sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#FFF0F4] text-[#B85F7D]">
+              <Wallet size={21} />
             </div>
 
             <div className="min-w-0">
-              
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-black tracking-tight text-[#342A2E] sm:text-2xl">
+                  Caja
+                </h1>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[10px] font-black ${
+                    estadoAbierta
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-[#F8EDF1] text-[#8C777F]'
+                  }`}
+                >
+                  {estadoAbierta ? 'ABIERTA' : 'CERRADA'}
+                </span>
+              </div>
 
-              <h1 className="mt-3 text-2xl font-black tracking-[-0.03em] text-[#342A2E] sm:text-3xl">
-                Caja
-              </h1>
-
-              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-[#89757D]">
-                Apertura, movimientos, conciliación, conteo de efectivo y
-                cierre de sesión de caja.
+              <p className="mt-1 truncate text-sm font-semibold text-[#8C777F]">
+                {sucursalActual?.nombre || 'Sucursal'}
+                {cajaActual?.nombre ? ` · ${cajaActual.nombre}` : ''}
               </p>
             </div>
           </div>
 
-          <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-3 xl:flex xl:w-auto">
+          {!estadoAbierta ? (
             <button
               type="button"
-              onClick={refrescarTodo}
-              disabled={cargando}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#44353B] px-5 py-3 text-sm font-black text-white transition hover:bg-[#35292E] disabled:opacity-60"
+              onClick={abrirModalAbrir}
+              disabled={!idCaja}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#B85F7D] px-5 py-3 text-sm font-black text-white shadow-[0_10px_24px_rgba(184,95,125,0.18)] transition hover:bg-[#A95270] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             >
-              <RefreshCw
-                size={18}
-                className={cargando ? 'animate-spin' : ''}
-              />
-              Actualizar
+              <UnlockKeyhole size={18} />
+              Abrir caja
             </button>
-
+          ) : (
             <button
               type="button"
-              onClick={abrirCajonFisico}
-              disabled={!idCaja || abriendoCajon}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={abrirModalCerrar}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-red-50 px-5 py-3 text-sm font-black text-red-700 transition hover:bg-red-100 sm:w-auto"
             >
-              <Printer
-                size={18}
-                className={abriendoCajon ? 'animate-pulse' : ''}
-              />
-
-              {abriendoCajon ? 'Abriendo...' : 'Abrir cajón'}
+              <LockKeyhole size={18} />
+              Cerrar caja
             </button>
-
-            {!estadoAbierta ? (
-              <button
-                type="button"
-                onClick={abrirModalAbrir}
-                disabled={!idCaja}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B85F7D] px-5 py-3 text-sm font-black text-white shadow-[0_12px_28px_rgba(184,95,125,0.22)] transition hover:bg-[#A95270] disabled:opacity-50"
-              >
-                <UnlockKeyhole size={18} />
-                Abrir caja
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={abrirModalCerrar}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700"
-              >
-                <LockKeyhole size={18} />
-                Cerrar caja
-              </button>
-            )}
-          </div>
+          )}
         </div>
 
-        <div className="relative mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="min-w-0">
-            <label className="mb-2 block text-sm font-black text-[#5D4A51]">
-              Sucursal
-            </label>
+        {/* La selección manual solo aparece para perfiles con permiso. */}
+        {(puedeCambiarSucursal || puedeCambiarCaja) && (
+          <div className="mt-4 grid grid-cols-1 gap-3 border-t border-[#F4EAED] pt-4 sm:grid-cols-2">
+            {puedeCambiarSucursal && (
+              <div className="min-w-0">
+                <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-[#9B858D]">
+                  Sucursal
+                </label>
+                <select
+                  value={idSucursal}
+                  onChange={(e) => {
+                    setIdSucursal(e.target.value);
+                    setIdCaja('');
+                  }}
+                  className="w-full rounded-2xl border border-[#EEDFE4] bg-[#FFFBFC] px-4 py-3 text-sm font-semibold text-[#4B3C42] outline-none transition focus:border-[#D58AA2] focus:bg-white focus:ring-4 focus:ring-[#FBEAF0]"
+                >
+                  <option value="">Selecciona sucursal</option>
+                  {sucursales.map((sucursal) => (
+                    <option key={sucursal.id_sucursal} value={sucursal.id_sucursal}>
+                      {sucursal.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-            {puedeCambiarSucursal ? (
-              <select
-                value={idSucursal}
-                onChange={(e) => {
-                  setIdSucursal(e.target.value);
-                  setIdCaja('');
-                }}
-                className="w-full min-w-0 rounded-2xl border border-[#EEDFE4] bg-[#FFFBFC] px-4 py-3 text-sm font-semibold text-[#4B3C42] outline-none transition focus:border-[#D58AA2] focus:bg-white focus:ring-4 focus:ring-[#FBEAF0]"
-              >
-                <option value="">Selecciona sucursal</option>
-
-                {sucursales.map((sucursal) => (
-                  <option
-                    key={sucursal.id_sucursal}
-                    value={sucursal.id_sucursal}
-                  >
-                    {sucursal.nombre}
+            {puedeCambiarCaja && (
+              <div className="min-w-0">
+                <label className="mb-1.5 block text-xs font-black uppercase tracking-wide text-[#9B858D]">
+                  Caja
+                </label>
+                <select
+                  value={idCaja}
+                  onChange={(e) => setIdCaja(e.target.value)}
+                  disabled={cajas.length === 0}
+                  className="w-full rounded-2xl border border-[#EEDFE4] bg-[#FFFBFC] px-4 py-3 text-sm font-semibold text-[#4B3C42] outline-none transition focus:border-[#D58AA2] focus:bg-white focus:ring-4 focus:ring-[#FBEAF0] disabled:opacity-60"
+                >
+                  <option value="">
+                    {cajas.length === 0 ? 'No hay cajas disponibles' : 'Selecciona caja'}
                   </option>
-                ))}
-              </select>
-            ) : (
-              <div className="w-full min-w-0 truncate rounded-2xl border border-[#EEDFE4] bg-[#FFFAFB] px-4 py-3 text-sm font-bold text-[#66535A]">
-                {sucursalActual?.nombre ||
-                  sucursales[0]?.nombre ||
-                  'Sucursal asignada'}
+                  {cajas.map((caja) => (
+                    <option key={caja.id_caja} value={caja.id_caja}>
+                      {caja.nombre}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
           </div>
-
-          <div className="min-w-0">
-            <label className="mb-2 block text-sm font-black text-[#5D4A51]">
-              Caja
-            </label>
-
-            <select
-              value={idCaja}
-              onChange={(e) => setIdCaja(e.target.value)}
-              disabled={!puedeCambiarCaja || cajas.length === 0}
-              className={`w-full min-w-0 rounded-2xl border px-4 py-3 text-sm outline-none transition focus:border-[#D58AA2] focus:ring-4 focus:ring-[#FBEAF0] ${
-                puedeCambiarCaja
-                  ? 'border-[#EEDFE4] bg-[#FFFBFC] font-semibold text-[#4B3C42]'
-                  : 'cursor-not-allowed border-[#EEDFE4] bg-[#F8F2F4] font-semibold text-[#766168]'
-              }`}
-            >
-              <option value="">
-                {cajas.length === 0
-                  ? 'No tienes una caja asignada'
-                  : 'Selecciona caja'}
-              </option>
-
-              {cajas.map((caja) => (
-                <option
-                  key={caja.id_caja}
-                  value={caja.id_caja}
-                >
-                  {caja.nombre}
-                </option>
-              ))}
-            </select>
-
-            {!puedeCambiarCaja && (
-              <p className="mt-2 text-xs font-semibold text-[#9B858D]">
-                Esta caja está asignada a tu usuario.
-              </p>
-            )}
-          </div>
-        </div>
+        )}
       </section>
 
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-        <div
-          className={`rounded-2xl sm:rounded-[2rem] p-5 sm:p-6 shadow-[0_12px_40px_rgba(118,76,91,0.05)] border min-w-0 ${estadoAbierta
-            ? 'bg-[#B85F7D] text-white border-[#A95270]'
-            : 'bg-[#44353B] text-white border-slate-800'
-            }`}
-        >
-          <div className="flex items-center justify-between gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center shrink-0">
-              {estadoAbierta ? (
-                <UnlockKeyhole size={24} />
-              ) : (
-                <LockKeyhole size={24} />
-              )}
-            </div>
-
-            <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/15 shrink-0">
-              {estadoAbierta ? 'ABIERTA' : 'CERRADA'}
-            </span>
-          </div>
-
-          <p className="text-sm mt-5 opacity-80">Estado actual</p>
-          <h3 className="text-2xl sm:text-3xl font-bold mt-1 break-words">
-            {estadoAbierta ? 'Caja abierta' : 'Sin sesión'}
-          </h3>
-
-          <p className="text-sm mt-3 opacity-80 break-words">
-            {estadoAbierta
-              ? `Apertura: ${formatoFecha(sesionAbierta?.fecha_apertura)}`
-              : 'Abre caja para comenzar operaciones.'}
-          </p>
-        </div>
-
-        <div className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-6 shadow-[0_12px_40px_rgba(118,76,91,0.05)] border border-[#F0E4E8] min-w-0">
-          <div className="w-12 h-12 rounded-2xl bg-[#F3EEF7] text-[#765D8D] flex items-center justify-center">
-            <DollarSign size={24} />
-          </div>
-
-          <p className="text-sm text-[#8C777F] mt-5">Monto inicial</p>
-          <h3 className="text-2xl sm:text-3xl font-bold text-[#43353A] mt-1 break-words">
-            {formatoMoneda(sesionAbierta?.monto_inicial)}
-          </h3>
-
-          <p className="text-sm text-[#AA939B] mt-2 truncate">
-            {cajaActual?.nombre || 'Sin caja seleccionada'}
-          </p>
-        </div>
-
-        <div className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-6 shadow-[0_12px_40px_rgba(118,76,91,0.05)] border border-[#F0E4E8] min-w-0">
-          <div className="w-12 h-12 rounded-2xl bg-[#FFF2F5] text-[#A84E6C] flex items-center justify-center">
-            <Calculator size={24} />
-          </div>
-
-          <p className="text-sm text-[#8C777F] mt-5">Monto esperado en caja</p>
-          <h3 className="text-2xl sm:text-3xl font-bold text-[#43353A] mt-1 break-words">
-            {formatoMoneda(resumen?.monto_final_sistema)}
-          </h3>
-
-          <p className="text-sm text-[#AA939B] mt-2">
-            Solo efectivo esperado
-          </p>
-        </div>
-      </section>
-
-      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
-        <div className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-6 shadow-[0_12px_40px_rgba(118,76,91,0.05)] border border-[#F0E4E8] min-w-0">
-          <p className="text-sm text-[#8C777F]">Ventas efectivo</p>
-          <h3 className="text-2xl font-bold text-[#A84E6C] mt-1 break-words">
-            {formatoMoneda(ventasEfectivo)}
-          </h3>
-          <p className="text-xs text-[#AA939B] mt-2">
-            Entra a caja física
-          </p>
-        </div>
-
-        <div className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-6 shadow-[0_12px_40px_rgba(118,76,91,0.05)] border border-[#F0E4E8] min-w-0">
-          <p className="text-sm text-[#8C777F]">Entradas efectivo</p>
-          <h3 className="text-2xl font-bold text-[#765D8D] mt-1 break-words">
-            {formatoMoneda(resumen?.entradas_efectivo)}
-          </h3>
-        </div>
-
-        <div className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-6 shadow-[0_12px_40px_rgba(118,76,91,0.05)] border border-[#F0E4E8] min-w-0">
-          <p className="text-sm text-[#8C777F]">Salidas / gastos</p>
-          <h3 className="text-2xl font-bold text-red-700 mt-1 break-words">
-            {formatoMoneda(
-              Number(resumen?.salidas_efectivo || 0) +
-              Number(resumen?.gastos_efectivo || 0) +
-              Number(resumen?.retiros_efectivo || 0) +
-              Number(resumen?.pagos_proveedor_efectivo || 0)
-            )}
-          </h3>
-        </div>
-
-        <div className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-6 shadow-[0_12px_40px_rgba(118,76,91,0.05)] border border-[#F0E4E8] min-w-0">
-          <p className="text-sm text-[#8C777F]">Devoluciones registradas</p>
-          <h3 className="text-2xl font-bold text-amber-700 mt-1 break-words">
-            {formatoMoneda(resumen?.devoluciones_efectivo)}
-          </h3>
-          <p className="text-xs text-[#AA939B] mt-2">
-            Informativo, no afecta caja física
-          </p>
-        </div>
-      </section>
-
-      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 sm:gap-5">
-        <div className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-6 shadow-[0_12px_40px_rgba(118,76,91,0.05)] border border-[#E9D7E0] min-w-0">
-          <p className="text-sm text-[#8C777F]">Ventas tarjeta</p>
-          <h3 className="text-2xl font-bold text-[#8C6173] mt-1 break-words">
-            {formatoMoneda(ventasTarjeta)}
-          </h3>
-          <p className="text-xs text-[#AA939B] mt-2">
-            No entra a caja física
-          </p>
-        </div>
-
-        <div className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-6 shadow-[0_12px_40px_rgba(118,76,91,0.05)] border border-emerald-100 min-w-0">
-          <p className="text-sm text-[#8C777F]">Ventas transferencia</p>
-          <h3 className="text-2xl font-bold text-emerald-700 mt-1 break-words">
-            {formatoMoneda(ventasTransferencia)}
-          </h3>
-          <p className="text-xs text-[#AA939B] mt-2">
-            Pago fuera de efectivo
-          </p>
-        </div>
-
-        <div className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-6 shadow-[0_12px_40px_rgba(118,76,91,0.05)] border border-[#E5DCEC] min-w-0">
-          <p className="text-sm text-[#8C777F]">Total no efectivo</p>
-          <h3 className="text-2xl font-bold text-[#725B87] mt-1 break-words">
-            {formatoMoneda(totalNoEfectivo)}
-          </h3>
-          <p className="text-xs text-[#AA939B] mt-2">
-            Tarjeta + transferencia
-          </p>
-        </div>
-
-        <div className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-6 shadow-[0_12px_40px_rgba(118,76,91,0.05)] border border-amber-100 min-w-0">
-          <p className="text-sm text-[#8C777F]">Ventas con puntos</p>
-          <h3 className="text-2xl font-bold text-amber-700 mt-1 break-words">
-            {formatoMoneda(ventasPuntos)}
-          </h3>
-          <p className="text-xs text-[#AA939B] mt-2">
-            Canje, no entra a caja física
-          </p>
-        </div>
-
-        <div className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-6 shadow-[0_12px_40px_rgba(118,76,91,0.05)] border border-[#F0E4E8] min-w-0">
-          <p className="text-sm text-[#8C777F]">Total vendido</p>
-          <h3 className="text-2xl font-bold text-[#43353A] mt-1 break-words">
+      {/* RESUMEN: SOLO LOS DATOS QUE MÁS SE CONSULTAN */}
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="rounded-[1.5rem] border border-[#F0E2E7] bg-white p-4 shadow-[0_10px_30px_rgba(118,76,91,0.04)] sm:p-5">
+          <p className="text-xs font-bold text-[#8C777F]">Total vendido</p>
+          <p className="mt-1 break-words text-xl font-black text-[#342A2E] sm:text-2xl">
             {formatoMoneda(totalVendido)}
-          </h3>
-          <p className="text-xs text-[#AA939B] mt-2">
-            Efectivo + no efectivo + puntos
+          </p>
+        </div>
+
+        <div className="rounded-[1.5rem] border border-[#F0D4DE] bg-[#FFF5F7] p-4 shadow-[0_10px_30px_rgba(118,76,91,0.04)] sm:p-5">
+          <p className="text-xs font-bold text-[#8C777F]">Efectivo esperado</p>
+          <p className="mt-1 break-words text-xl font-black text-[#B85F7D] sm:text-2xl">
+            {formatoMoneda(resumen?.monto_final_sistema)}
+          </p>
+        </div>
+
+        <div className="rounded-[1.5rem] border border-[#F0E2E7] bg-white p-4 shadow-[0_10px_30px_rgba(118,76,91,0.04)] sm:p-5">
+          <p className="text-xs font-bold text-[#8C777F]">Ventas en efectivo</p>
+          <p className="mt-1 break-words text-xl font-black text-[#A84E6C] sm:text-2xl">
+            {formatoMoneda(ventasEfectivo)}
+          </p>
+        </div>
+
+        <div className="rounded-[1.5rem] border border-[#E9D7E0] bg-white p-4 shadow-[0_10px_30px_rgba(118,76,91,0.04)] sm:p-5">
+          <p className="text-xs font-bold text-[#8C777F]">Otros pagos</p>
+          <p className="mt-1 break-words text-xl font-black text-[#765D8D] sm:text-2xl">
+            {formatoMoneda(totalNoEfectivo + ventasPuntos)}
+          </p>
+          <p className="mt-1 text-[10px] font-semibold text-[#AA939B]">
+            Tarjeta, transferencia y puntos
           </p>
         </div>
       </section>
 
-      <section className="bg-white rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 shadow-[0_12px_40px_rgba(118,76,91,0.05)] border border-[#F0E4E8] overflow-hidden">
-        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
-          <div className="min-w-0">
-            <h2 className="text-lg sm:text-xl font-bold text-[#43353A]">
-              Operaciones de caja
-            </h2>
-            <p className="text-sm sm:text-base text-[#8C777F] leading-relaxed">
-              Registra entradas, salidas, gastos y consulta movimientos.
+      {/* DETALLE COMPACTO */}
+      <section className="rounded-[1.75rem] border border-[#F0E2E7] bg-white p-4 shadow-[0_10px_30px_rgba(118,76,91,0.04)] sm:p-5">
+        <h2 className="text-base font-black text-[#43353A]">Resumen de caja</h2>
+
+        <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-4">
+          <div>
+            <p className="text-[11px] font-bold text-[#9B858D]">Monto inicial</p>
+            <p className="mt-1 text-sm font-black text-[#43353A]">
+              {formatoMoneda(sesionAbierta?.monto_inicial)}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full xl:w-auto">
+          <div>
+            <p className="text-[11px] font-bold text-[#9B858D]">Entradas</p>
+            <p className="mt-1 text-sm font-black text-[#43353A]">
+              {formatoMoneda(resumen?.entradas_efectivo)}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-[11px] font-bold text-[#9B858D]">Salidas / gastos</p>
+            <p className="mt-1 text-sm font-black text-red-700">
+              {formatoMoneda(
+                Number(resumen?.salidas_efectivo || 0) +
+                  Number(resumen?.gastos_efectivo || 0) +
+                  Number(resumen?.retiros_efectivo || 0) +
+                  Number(resumen?.pagos_proveedor_efectivo || 0)
+              )}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-[11px] font-bold text-[#9B858D]">Con puntos</p>
+            <p className="mt-1 text-sm font-black text-amber-700">
+              {formatoMoneda(ventasPuntos)}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* MOVIMIENTOS: DOS ACCIONES PRINCIPALES */}
+      <section className="rounded-[1.75rem] border border-[#F0E2E7] bg-white p-4 shadow-[0_10px_30px_rgba(118,76,91,0.04)] sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-black text-[#43353A]">Movimientos de caja</h2>
+            <p className="mt-0.5 text-xs font-semibold text-[#8C777F]">
+              Registra solamente cuando entre o salga dinero fuera de una venta.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:flex">
             <button
+              type="button"
               onClick={() => abrirModalMovimiento('ENTRADA')}
               disabled={!estadoAbierta}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#FBEAF0] px-5 py-3 font-black text-[#A84E6C] transition hover:bg-[#F4D9E2] disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#FFF0F4] px-4 py-3 text-sm font-black text-[#A84E6C] transition hover:bg-[#FBE4EB] disabled:opacity-40"
             >
-              <PlusCircle size={19} />
+              <PlusCircle size={18} />
               Entrada
             </button>
 
             <button
+              type="button"
               onClick={() => abrirModalMovimiento('GASTO')}
               disabled={!estadoAbierta}
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-red-100 hover:bg-red-200 text-red-800 font-bold transition disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-sm font-black text-red-700 transition hover:bg-red-100 disabled:opacity-40"
             >
-              <MinusCircle size={19} />
-              Salida / gasto
-            </button>
-
-            <button
-              onClick={abrirModalMovimientos}
-              disabled={!estadoAbierta}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#F0EBF6] px-5 py-3 font-black text-[#765D8D] transition hover:bg-[#E7DEEF] disabled:opacity-50"
-            >
-              <History size={19} />
-              Movimientos
+              <MinusCircle size={18} />
+              Salida
             </button>
           </div>
         </div>
 
-        <div className="mt-6">
-          <div className="md:hidden space-y-3">
-            {!estadoAbierta ? (
-              <div className="rounded-2xl border border-[#F0E4E8] bg-[#FFFAFB] p-5 text-center text-[#8C777F]">
-                No hay caja abierta.
-              </div>
-            ) : movimientosCajaVista.length === 0 ? (
-              <div className="rounded-2xl border border-[#F0E4E8] bg-[#FFFAFB] p-5 text-center text-[#8C777F]">
-                No hay movimientos registrados.
-              </div>
-            ) : (
-              movimientosCajaVista.slice(0, 8).map((mov) => (
-                <div
-                  key={mov.id_movimiento}
-                  className="rounded-2xl border border-[#F0E4E8] bg-white p-4 shadow-[0_12px_40px_rgba(118,76,91,0.05)]"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <span
-                        className={`inline-flex text-xs font-bold px-3 py-1 rounded-full ${claseMovimiento(
-                          mov.tipo_movimiento
-                        )}`}
-                      >
-                        {mov.tipo_movimiento}
-                      </span>
-
-                      <p className="mt-3 font-bold text-[#43353A] break-words">
-                        {mov.concepto}
-                      </p>
-
-                      <p className="mt-1 text-xs text-[#8C777F]">
-                        {formatoFecha(mov.fecha_movimiento)}
-                      </p>
-
-                      {mov.observaciones && (
-                        <p className="mt-2 text-xs text-[#8C777F] break-words whitespace-pre-wrap">
-                          Obs: {mov.observaciones}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <p className="text-lg font-bold text-[#43353A]">
-                        {formatoMoneda(mov.monto)}
-                      </p>
-                      <p className="text-xs text-[#8C777F]">
-                        {mov.metodo_pago}
-                      </p>
-                    </div>
+        <div className="mt-4 space-y-2">
+          {!estadoAbierta ? (
+            <div className="rounded-2xl bg-[#FFFAFB] p-5 text-center text-sm font-semibold text-[#8C777F]">
+              Abre la caja para comenzar.
+            </div>
+          ) : movimientosCajaVista.length === 0 ? (
+            <div className="rounded-2xl bg-[#FFFAFB] p-5 text-center text-sm font-semibold text-[#8C777F]">
+              Aún no hay movimientos.
+            </div>
+          ) : (
+            movimientosCajaVista.slice(0, 5).map((mov) => (
+              <div
+                key={mov.id_movimiento}
+                className="flex items-start justify-between gap-3 rounded-2xl border border-[#F4EAED] bg-[#FFFAFB] p-3 sm:p-4"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-[10px] font-black ${claseMovimiento(
+                        mov.tipo_movimiento
+                      )}`}
+                    >
+                      {mov.tipo_movimiento}
+                    </span>
+                    <span className="text-[10px] font-semibold text-[#AA939B]">
+                      {formatoFecha(mov.fecha_movimiento)}
+                    </span>
                   </div>
 
-                  <div className="mt-4 rounded-xl bg-[#FFFAFB] p-3">
-                    <p className="text-xs text-[#8C777F]">Usuario</p>
-                    <p className="text-sm font-semibold text-[#66535A] break-words">
-                      {mov.usuario || '—'}
-                    </p>
-                  </div>
+                  <p className="mt-2 truncate text-sm font-black text-[#43353A]">
+                    {mov.concepto}
+                  </p>
+                  <p className="mt-0.5 text-xs font-semibold text-[#8C777F]">
+                    {mov.metodo_pago || '—'}
+                  </p>
                 </div>
-              ))
-            )}
-          </div>
 
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full min-w-[900px]">
-              <thead className="bg-[#FFFAFB] border-b border-[#F0E4E8]">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-[#8C777F] uppercase">
-                    Fecha
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-[#8C777F] uppercase">
-                    Tipo
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-[#8C777F] uppercase">
-                    Concepto
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-[#8C777F] uppercase">
-                    Método
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-[#8C777F] uppercase">
-                    Monto
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-[#8C777F] uppercase">
-                    Usuario
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-[#F5EAED]">
-                {!estadoAbierta ? (
-                  <tr>
-                    <td colSpan="6" className="px-4 py-10 text-center text-[#8C777F]">
-                      No hay caja abierta.
-                    </td>
-                  </tr>
-                ) : movimientosCajaVista.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="px-4 py-10 text-center text-[#8C777F]">
-                      No hay movimientos registrados.
-                    </td>
-                  </tr>
-                ) : (
-                  movimientosCajaVista.slice(0, 8).map((mov) => (
-                    <tr key={mov.id_movimiento} className="hover:bg-[#FFFAFB]">
-                      <td className="px-4 py-3 text-sm text-[#766168]">
-                        {formatoFecha(mov.fecha_movimiento)}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <span
-                          className={`text-xs font-bold px-3 py-1 rounded-full ${claseMovimiento(
-                            mov.tipo_movimiento
-                          )}`}
-                        >
-                          {mov.tipo_movimiento}
-                        </span>
-                      </td>
-
-                      <td className="px-4 py-3 font-semibold text-[#43353A]">
-                        {mov.concepto}
-
-                        {mov.referencia && (
-                          <p className="text-xs text-[#AA939B] mt-1">
-                            Ref: {mov.referencia}
-                          </p>
-                        )}
-
-                        {mov.observaciones && (
-                          <p className="text-xs text-[#8C777F] mt-1 whitespace-pre-wrap">
-                            Obs: {mov.observaciones}
-                          </p>
-                        )}
-                      </td>
-
-                      <td className="px-4 py-3 text-[#766168]">
-                        {mov.metodo_pago}
-                      </td>
-
-                      <td className="px-4 py-3 text-right font-bold text-[#43353A]">
-                        {formatoMoneda(mov.monto)}
-                      </td>
-
-                      <td className="px-4 py-3 text-[#766168]">
-                        {mov.usuario || '—'}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                <p className="shrink-0 text-base font-black text-[#43353A]">
+                  {formatoMoneda(mov.monto)}
+                </p>
+              </div>
+            ))
+          )}
         </div>
+
+        {estadoAbierta && movimientosCajaVista.length > 5 && (
+          <button
+            type="button"
+            onClick={abrirModalMovimientos}
+            className="mt-3 w-full rounded-2xl py-2.5 text-sm font-black text-[#B85F7D] transition hover:bg-[#FFF5F7]"
+          >
+            Ver todos los movimientos
+          </button>
+        )}
       </section>
 
       {cerrandoCaja && (
@@ -2277,14 +1934,6 @@ export default function Caja() {
               </div>
 
               <div className="px-4 sm:px-6 py-5 flex flex-col sm:flex-row justify-end gap-3 border-t border-[#F0E4E8] bg-white shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setModalAbrir(false)}
-                  className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-[#F8EDF1] hover:bg-[#F2DDE4] text-[#66535A] font-bold transition"
-                >
-                  Cancelar
-                </button>
-
                 <button
                   type="submit"
                   disabled={guardando}
@@ -2443,14 +2092,6 @@ export default function Caja() {
 
               <div className="px-4 sm:px-6 py-5 flex flex-col sm:flex-row justify-end gap-3 border-t border-[#F0E4E8]">
                 <button
-                  type="button"
-                  onClick={() => setModalMovimiento(false)}
-                  className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-[#F8EDF1] hover:bg-[#F2DDE4] text-[#66535A] font-bold transition"
-                >
-                  Cancelar
-                </button>
-
-                <button
                   type="submit"
                   disabled={guardando}
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-[#B85F7D] hover:bg-[#A95270] text-white font-bold transition disabled:opacity-60"
@@ -2578,14 +2219,6 @@ export default function Caja() {
               </div>
 
               <div className="px-4 sm:px-6 py-5 flex flex-col sm:flex-row justify-end gap-3 border-t border-[#F0E4E8] bg-white shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setModalCerrar(false)}
-                  className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-[#F8EDF1] hover:bg-[#F2DDE4] text-[#66535A] font-bold transition"
-                >
-                  Cancelar
-                </button>
-
                 <button
                   type="submit"
                   disabled={guardando}
