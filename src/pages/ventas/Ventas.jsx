@@ -483,6 +483,92 @@ export default function Ventas() {
     });
   };
 
+  const etiquetasAtributosVariante = {
+    talla: 'Talla',
+    color: 'Color',
+    tono: 'Tono',
+    genero: 'Género',
+    presentacion: 'Presentación',
+    material: 'Material',
+    modelo: 'Modelo',
+    aroma: 'Aroma',
+    capacidad: 'Capacidad',
+  };
+
+  const normalizarAtributosVariante = (valor) => {
+    if (!valor) return {};
+    if (typeof valor === 'object' && !Array.isArray(valor)) return valor;
+
+    try {
+      const convertido = JSON.parse(valor);
+      return convertido && typeof convertido === 'object' && !Array.isArray(convertido)
+        ? convertido
+        : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const obtenerAtributosVisiblesVariante = (item = {}) => {
+    if (!item?.id_variante && !item?.nombre_variante) return [];
+
+    const atributosJson = normalizarAtributosVariante(item.atributos_variante);
+    const valores = [];
+    const clavesAgregadas = new Set();
+
+    const agregar = (clave, valor, etiquetaPersonalizada = null) => {
+      const texto = String(valor ?? '').trim();
+      if (!texto || texto.toLowerCase() === 'null' || clavesAgregadas.has(clave)) return;
+
+      clavesAgregadas.add(clave);
+      valores.push({
+        clave,
+        etiqueta:
+          etiquetaPersonalizada ||
+          etiquetasAtributosVariante[clave] ||
+          clave
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (letra) => letra.toUpperCase()),
+        valor: texto,
+      });
+    };
+
+    agregar('talla', item.talla);
+    agregar('color', item.color);
+    agregar('tono', item.tono);
+    agregar('presentacion', item.presentacion_variante);
+
+    Object.entries(atributosJson).forEach(([clave, valor]) => {
+      if (['talla', 'color', 'tono', 'presentacion'].includes(clave)) return;
+      agregar(clave, valor);
+    });
+
+    return valores;
+  };
+
+  const obtenerEtiquetaVariante = (item = {}) => {
+    if (!item?.id_variante && !item?.nombre_variante) return '';
+
+    const nombre = String(item.nombre_variante || '').trim();
+    if (nombre && nombre.toLowerCase() !== 'pieza') return nombre;
+
+    const atributos = obtenerAtributosVisiblesVariante(item);
+    if (atributos.length > 0) {
+      return atributos.map((atributo) => atributo.valor).join(' · ');
+    }
+
+    return nombre || `Variante #${item.id_variante}`;
+  };
+
+  const obtenerCodigoVarianteVenta = (item = {}) => {
+    return (
+      item.codigo_barras_variante ||
+      item.sku_variante ||
+      item.codigo_barras ||
+      '—'
+    );
+  };
+
   const iconoMetodo = (metodo) => {
     if (metodo === 'EFECTIVO') return <Banknote size={17} />;
     if (metodo === 'TARJETA') return <CreditCard size={17} />;
@@ -808,11 +894,26 @@ export default function Ventas() {
           return mismoProducto && mismoLote;
         }) || null;
 
+      const etiquetaVariante = obtenerEtiquetaVariante(item);
+
       return {
         id_producto: item.id_producto,
         id_variante: item.id_variante || null,
         id_lote: item.id_lote || loteRelacionado?.id_lote || null,
-        nombre: item.producto || item.nombre || 'Producto',
+        nombre: etiquetaVariante
+          ? `${item.producto || item.nombre || 'Producto'} · ${etiquetaVariante}`
+          : item.producto || item.nombre || 'Producto',
+        nombre_producto: item.producto || item.nombre || 'Producto',
+        nombre_variante: item.nombre_variante || null,
+        sku_variante: item.sku_variante || null,
+        codigo_barras:
+          item.codigo_barras_variante || item.codigo_barras || null,
+        codigo_barras_variante: item.codigo_barras_variante || null,
+        atributos_variante: item.atributos_variante || {},
+        talla: item.talla || null,
+        color: item.color || null,
+        tono: item.tono || null,
+        presentacion_variante: item.presentacion_variante || null,
         cantidad: Number(item.cantidad || 0),
         precio_unitario: Number(item.precio_unitario || 0),
         precio_venta: Number(item.precio_unitario || 0),
@@ -1777,13 +1878,49 @@ export default function Ventas() {
                               </td>
                             </tr>
                           ) : (
-                            detalleProductos.map((item) => (
-                              <tr key={item.id_detalle}>
-                                <td className="px-4 py-3 font-bold text-[#43353A]">
-                                  {item.producto}
+                            detalleProductos.map((item) => {
+                              const etiquetaVariante = obtenerEtiquetaVariante(item);
+                              const atributosVariante = obtenerAtributosVisiblesVariante(item);
+
+                              return (
+                                <tr key={item.id_detalle}>
+                                  <td className="px-4 py-3">
+                                    <p className="font-bold text-[#43353A]">
+                                      {item.producto}
+                                    </p>
+
+                                    {item.id_variante && (
+                                      <div className="mt-1.5">
+                                        <div className="flex flex-wrap items-center gap-1.5">
+                                          <span className="rounded-full bg-[#F0EBF6] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-[#765D8D]">
+                                            Variante
+                                          </span>
+                                          <span className="text-xs font-black text-[#765D8D]">
+                                            {etiquetaVariante}
+                                          </span>
+                                        </div>
+
+                                        {atributosVariante.length > 0 && (
+                                          <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] font-semibold text-[#8C777F]">
+                                            {atributosVariante.map((atributo) => (
+                                              <span key={`${item.id_detalle}-${atributo.clave}`}>
+                                                {atributo.etiqueta}: {atributo.valor}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                 </td>
                                 <td className="px-4 py-3 text-[#766168]">
-                                  {item.codigo_barras || '—'}
+                                  <p className="font-semibold">
+                                    {obtenerCodigoVarianteVenta(item)}
+                                  </p>
+                                  {item.sku_variante && (
+                                    <p className="mt-0.5 text-[11px] text-[#9A858D]">
+                                      SKU: {item.sku_variante}
+                                    </p>
+                                  )}
                                 </td>
                                 <td className="px-4 py-3 text-right font-bold">
                                   {formatoNumero(item.cantidad)}
@@ -1798,7 +1935,8 @@ export default function Ventas() {
                                   {formatoMoneda(item.subtotal)}
                                 </td>
                               </tr>
-                            ))
+                              );
+                            })
                           )}
                         </tbody>
                       </table>
@@ -1846,8 +1984,15 @@ export default function Ventas() {
                           <tbody className="divide-y divide-[#F5EAED]">
                             {detalleLotes.map((lote) => (
                               <tr key={lote.id_movimiento}>
-                                <td className="px-4 py-3 font-bold text-[#43353A]">
-                                  {lote.producto}
+                                <td className="px-4 py-3">
+                                  <p className="font-bold text-[#43353A]">
+                                    {lote.producto}
+                                  </p>
+                                  {lote.id_variante && (
+                                    <p className="mt-1 text-xs font-black text-[#765D8D]">
+                                      {obtenerEtiquetaVariante(lote)}
+                                    </p>
+                                  )}
                                 </td>
                                 <td className="px-4 py-3 text-[#766168]">
                                   {lote.lote || '—'}
@@ -2011,9 +2156,26 @@ export default function Ventas() {
                                 <p className="font-bold text-[#43353A]">
                                   {producto.producto}
                                 </p>
-                                <p className="text-xs text-[#8C777F]">
-                                  Código: {producto.codigo_barras || '—'}
+
+                                {producto.id_variante && (
+                                  <div className="mt-1">
+                                    <p className="text-xs font-black text-[#765D8D]">
+                                      {obtenerEtiquetaVariante(producto)}
+                                    </p>
+                                    <p className="text-[11px] text-[#9A858D]">
+                                      Variante #{producto.id_variante}
+                                    </p>
+                                  </div>
+                                )}
+
+                                <p className="mt-1 text-xs text-[#8C777F]">
+                                  Código: {obtenerCodigoVarianteVenta(producto)}
                                 </p>
+                                {producto.sku_variante && (
+                                  <p className="text-[11px] text-[#9A858D]">
+                                    SKU: {producto.sku_variante}
+                                  </p>
+                                )}
                               </td>
 
                               <td className="px-4 py-3 text-[#766168]">

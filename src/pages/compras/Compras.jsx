@@ -34,6 +34,12 @@ import {
 
 const productoInicial = {
   id_producto: '',
+  id_variante: '',
+  modo_variante: 'EXISTENTE',
+  atributos_variante: {},
+  nombre_variante: '',
+  sku_variante: '',
+  codigo_barras_variante: '',
   cantidad: '',
   precio_compra: '',
   descuento: '',
@@ -62,6 +68,8 @@ export default function Compras() {
   const [sucursales, setSucursales] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [productos, setProductos] = useState([]);
+  const [variantesPorProducto, setVariantesPorProducto] = useState({});
+  const [cargandoVariantes, setCargandoVariantes] = useState({});
   const [cajas, setCajas] = useState([]);
   const [compras, setCompras] = useState([]);
 
@@ -197,6 +205,203 @@ export default function Compras() {
   const formatoFechaSimple = (fecha) => {
     if (!fecha) return 'Sin fecha';
     return new Date(fecha).toLocaleDateString('es-MX');
+  };
+
+  const esVerdadero = (valor) => {
+    if (typeof valor === 'boolean') return valor;
+    return ['true', '1', 't', 'si', 'sí', 's', 'yes'].includes(
+      String(valor ?? '').trim().toLowerCase()
+    );
+  };
+
+
+  const configuracionVariantesDefault = {
+    talla: false,
+    color: false,
+    tono: false,
+    genero: false,
+    presentacion: false,
+    material: false,
+    modelo: false,
+    aroma: false,
+    capacidad: false,
+    personalizados: [],
+  };
+
+  const definicionesVariantes = {
+    talla: { etiqueta: 'Talla', placeholder: 'Ej. M, 26, CH' },
+    color: { etiqueta: 'Color', placeholder: 'Ej. Negro, Rosa' },
+    tono: { etiqueta: 'Tono', placeholder: 'Ej. Nude 03' },
+    genero: {
+      etiqueta: 'Género',
+      tipo: 'select',
+      opciones: ['Hombre', 'Mujer', 'Unisex', 'Niño', 'Niña'],
+    },
+    presentacion: { etiqueta: 'Presentación', placeholder: 'Ej. Pieza, Caja' },
+    material: { etiqueta: 'Material', placeholder: 'Ej. Algodón' },
+    modelo: { etiqueta: 'Modelo', placeholder: 'Ej. Classic' },
+    aroma: { etiqueta: 'Aroma', placeholder: 'Ej. Floral' },
+    capacidad: { etiqueta: 'Capacidad', placeholder: 'Ej. 100 ml' },
+  };
+
+  const normalizarConfiguracionVariantes = (valor) => {
+    let origen = valor;
+
+    if (typeof origen === 'string') {
+      try {
+        origen = JSON.parse(origen);
+      } catch {
+        origen = {};
+      }
+    }
+
+    if (!origen || typeof origen !== 'object' || Array.isArray(origen)) {
+      origen = {};
+    }
+
+    return {
+      ...configuracionVariantesDefault,
+      ...origen,
+      personalizados: Array.isArray(origen.personalizados)
+        ? origen.personalizados
+            .map((item) => ({
+              clave: String(item?.clave || '').trim(),
+              etiqueta: String(item?.etiqueta || '').trim(),
+            }))
+            .filter((item) => item.clave && item.etiqueta)
+        : [],
+    };
+  };
+
+  const obtenerCamposVariantes = (producto) => {
+    const config = normalizarConfiguracionVariantes(
+      producto?.configuracion_variantes
+    );
+
+    const base = Object.keys(definicionesVariantes)
+      .filter((clave) => esVerdadero(config[clave]))
+      .map((clave) => ({
+        clave,
+        ...definicionesVariantes[clave],
+      }));
+
+    const personalizados = (config.personalizados || []).map((item) => ({
+      clave: item.clave,
+      etiqueta: item.etiqueta,
+      placeholder: `Captura ${item.etiqueta.toLowerCase()}`,
+    }));
+
+    return [...base, ...personalizados];
+  };
+
+  const itemUsaNuevaVariante = (item, producto) => {
+    if (!esVerdadero(producto?.usa_variantes)) return false;
+    if (item?.modo_variante === 'NUEVA') return true;
+
+    const variantes = variantesPorProducto[Number(item?.id_producto)] || [];
+    return variantes.length === 0 && !item?.id_variante;
+  };
+
+  const parsearAtributosVariante = (valor) => {
+    if (!valor) return {};
+    if (typeof valor === 'object' && !Array.isArray(valor)) return valor;
+
+    try {
+      const parsed = JSON.parse(valor);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+        ? parsed
+        : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const obtenerEtiquetaVariante = (variante = {}) => {
+    if (!variante?.id_variante) return 'Sin variante';
+
+    const nombre = String(
+      variante.etiqueta || variante.variante || variante.nombre_variante || ''
+    ).trim();
+
+    if (nombre) return nombre;
+
+    const atributos = parsearAtributosVariante(
+      variante.atributos || variante.atributos_variante
+    );
+
+    const valores = [
+      variante.talla,
+      variante.color,
+      variante.tono,
+      variante.presentacion || variante.presentacion_variante,
+      ...Object.values(atributos),
+    ]
+      .map((valor) => String(valor ?? '').trim())
+      .filter(Boolean);
+
+    return [...new Set(valores)].join(' · ') || `Variante #${variante.id_variante}`;
+  };
+
+  const obtenerProductoPorId = (idProducto) =>
+    productos.find(
+      (producto) => Number(producto.id_producto) === Number(idProducto)
+    );
+
+  const obtenerVariantesItem = (item) =>
+    variantesPorProducto[Number(item?.id_producto)] || [];
+
+  const cargarVariantesProducto = async (
+    idProducto,
+    idSucursal = formCompra.id_sucursal
+  ) => {
+    const idProductoNumero = Number(idProducto);
+
+    if (!idProductoNumero) return [];
+
+    setCargandoVariantes((prev) => ({
+      ...prev,
+      [idProductoNumero]: true,
+    }));
+
+    try {
+      const params = new URLSearchParams();
+      if (idSucursal) params.append('sucursal', idSucursal);
+
+      const { data } = await api.get(
+        `/compras/producto/${idProductoNumero}/variantes?${params.toString()}`
+      );
+
+      const variantes = data.ok ? data.variantes || [] : [];
+
+      setVariantesPorProducto((prev) => ({
+        ...prev,
+        [idProductoNumero]: variantes,
+      }));
+
+      return variantes;
+    } catch (error) {
+      console.error(error);
+
+      setVariantesPorProducto((prev) => ({
+        ...prev,
+        [idProductoNumero]: [],
+      }));
+
+      Swal.fire({
+        icon: 'error',
+        title: 'No se pudieron cargar las variantes',
+        text:
+          error.response?.data?.mensaje ||
+          'No fue posible consultar las variantes del producto.',
+      });
+
+      return [];
+    } finally {
+      setCargandoVariantes((prev) => ({
+        ...prev,
+        [idProductoNumero]: false,
+      }));
+    }
   };
 
   const claseEstadoCompra = (estado) => {
@@ -395,6 +600,21 @@ export default function Compras() {
     if (name === 'id_sucursal') {
       nuevoForm.id_sesion = '';
       await cargarCajasYSesion(value);
+
+      const productosConVariantes = [
+        ...new Set(
+          items
+            .map((item) => obtenerProductoPorId(item.id_producto))
+            .filter((producto) => producto && esVerdadero(producto.usa_variantes))
+            .map((producto) => Number(producto.id_producto))
+        ),
+      ];
+
+      await Promise.all(
+        productosConVariantes.map((idProducto) =>
+          cargarVariantesProducto(idProducto, value)
+        )
+      );
     }
 
     if (name === 'metodo_pago') {
@@ -409,7 +629,7 @@ export default function Compras() {
   };
 
   const agregarProducto = () => {
-    setItems([...items, { ...productoInicial }]);
+    setItems([...items, { ...productoInicial, atributos_variante: {} }]);
   };
 
   const quitarProducto = (index) => {
@@ -417,6 +637,8 @@ export default function Compras() {
   };
 
   const actualizarItem = (index, campo, valor) => {
+    let productoParaCargar = null;
+
     setItems((prev) =>
       prev.map((item, i) => {
         if (i !== index) return item;
@@ -424,20 +646,89 @@ export default function Compras() {
         const actualizado = { ...item, [campo]: valor };
 
         if (campo === 'id_producto') {
-          const producto = productos.find(
-            (p) => Number(p.id_producto) === Number(valor)
-          );
+          const producto = obtenerProductoPorId(valor);
+
+          actualizado.id_variante = '';
+          actualizado.modo_variante = 'EXISTENTE';
+          actualizado.atributos_variante = {};
+          actualizado.nombre_variante = '';
+          actualizado.sku_variante = '';
+          actualizado.codigo_barras_variante = '';
+          actualizado.lote = '';
+          actualizado.fecha_caducidad = '';
 
           if (producto) {
             actualizado.precio_compra =
               producto.precio_compra && Number(producto.precio_compra) > 0
                 ? producto.precio_compra
                 : actualizado.precio_compra;
+
+            if (esVerdadero(producto.usa_variantes)) {
+              productoParaCargar = producto.id_producto;
+            }
+          }
+        }
+
+        if (campo === 'modo_variante') {
+          actualizado.id_variante = '';
+          if (valor === 'EXISTENTE') {
+            actualizado.atributos_variante = {};
+            actualizado.nombre_variante = '';
+            actualizado.sku_variante = '';
+            actualizado.codigo_barras_variante = '';
+          }
+        }
+
+        if (campo === 'id_variante') {
+          const variante = obtenerVariantesItem(item).find(
+            (v) => Number(v.id_variante) === Number(valor)
+          );
+
+          if (
+            variante?.precio_compra !== undefined &&
+            variante?.precio_compra !== null &&
+            Number(variante.precio_compra) > 0
+          ) {
+            actualizado.precio_compra = variante.precio_compra;
+          }
+
+          if (variante?.ubicacion_sucursal && !actualizado.ubicacion) {
+            actualizado.ubicacion = variante.ubicacion_sucursal;
           }
         }
 
         return actualizado;
       })
+    );
+
+    if (productoParaCargar) {
+      cargarVariantesProducto(productoParaCargar).then((variantes) => {
+        if (variantes.length === 0) {
+          setItems((prev) =>
+            prev.map((item, i) =>
+              i === index && Number(item.id_producto) === Number(productoParaCargar)
+                ? { ...item, modo_variante: 'NUEVA', id_variante: '' }
+                : item
+            )
+          );
+        }
+      });
+    }
+  };
+
+  const actualizarAtributoVariante = (index, clave, valor) => {
+    setItems((prev) =>
+      prev.map((item, i) =>
+        i === index
+          ? {
+              ...item,
+              atributos_variante: {
+                ...(item.atributos_variante || {}),
+                [clave]: valor,
+              },
+            }
+          : item
+      )
     );
   };
 
@@ -613,6 +904,76 @@ export default function Compras() {
         return false;
       }
 
+      const producto = obtenerProductoPorId(item.id_producto);
+
+      if (!producto) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Producto no disponible',
+          text: `No se encontró la configuración del producto en la fila ${index + 1}.`,
+        });
+        return false;
+      }
+
+      if (esVerdadero(producto.usa_variantes)) {
+        const nuevaVariante = itemUsaNuevaVariante(item, producto);
+
+        if (nuevaVariante) {
+          const campos = obtenerCamposVariantes(producto);
+
+          if (campos.length === 0) {
+            Swal.fire({
+              icon: 'warning',
+              title: 'Configura las variantes',
+              text: `${producto.nombre} tiene activadas las variantes, pero no tiene atributos configurados. Edita el producto y selecciona talla, color, género u otra dimensión.`,
+            });
+            return false;
+          }
+
+          const faltante = campos.find(
+            (campo) => !String(item.atributos_variante?.[campo.clave] || '').trim()
+          );
+
+          if (faltante) {
+            Swal.fire({
+              icon: 'warning',
+              title: 'Variante incompleta',
+              text: `Captura ${faltante.etiqueta} para la nueva variante de ${producto.nombre} en la fila ${index + 1}.`,
+            });
+            return false;
+          }
+        } else if (!item.id_variante) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Variante obligatoria',
+            text: `Selecciona una variante de ${producto.nombre} o elige "Crear nueva combinación" en la fila ${index + 1}.`,
+          });
+          return false;
+        }
+      }
+
+      const controlaCaducidad = esVerdadero(producto.controla_caducidad);
+      const controlaLotes =
+        esVerdadero(producto.controla_lotes) || controlaCaducidad;
+
+      if (controlaLotes && !String(item.lote || '').trim()) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Lote obligatorio',
+          text: `${producto.nombre} controla lotes. Captura el lote en la fila ${index + 1}.`,
+        });
+        return false;
+      }
+
+      if (controlaCaducidad && !item.fecha_caducidad) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Caducidad obligatoria',
+          text: `${producto.nombre} controla caducidad. Captura la fecha en la fila ${index + 1}.`,
+        });
+        return false;
+      }
+
       if (!item.cantidad || Number(item.cantidad) <= 0) {
         Swal.fire({
           icon: 'warning',
@@ -707,16 +1068,33 @@ export default function Compras() {
         descuento: Number(formCompra.descuento || 0),
         observaciones: formCompra.observaciones || null,
         total_manual: Number(formCompra.total_manual || 0),
-        productos: productosValidos.map((item) => ({
-          id_producto: Number(item.id_producto),
-          cantidad: Number(item.cantidad),
-          precio_compra: Number(item.precio_compra || 0),
-          descuento: Number(item.descuento || 0),
-          lote: item.lote || null,
-          fecha_caducidad: item.fecha_caducidad || null,
-          ubicacion: item.ubicacion || null,
-          observaciones: item.observaciones || null,
-        })),
+        productos: productosValidos.map((item) => {
+          const producto = obtenerProductoPorId(item.id_producto);
+          const nuevaVariante = itemUsaNuevaVariante(item, producto);
+
+          return {
+            id_producto: Number(item.id_producto),
+            id_variante:
+              !nuevaVariante && item.id_variante
+                ? Number(item.id_variante)
+                : null,
+            variante_nueva: nuevaVariante
+              ? {
+                  nombre_variante: item.nombre_variante || null,
+                  sku: item.sku_variante || null,
+                  codigo_barras: item.codigo_barras_variante || null,
+                  atributos: item.atributos_variante || {},
+                }
+              : null,
+            cantidad: Number(item.cantidad),
+            precio_compra: Number(item.precio_compra || 0),
+            descuento: Number(item.descuento || 0),
+            lote: item.lote || null,
+            fecha_caducidad: item.fecha_caducidad || null,
+            ubicacion: item.ubicacion || null,
+            observaciones: item.observaciones || null,
+          };
+        }),
       };
 
       const formData = new FormData();
@@ -819,25 +1197,49 @@ export default function Compras() {
           total_manual: compra.total || '',
         });
 
-        setItems(
-          detalle.map((item) => ({
-            id_producto: item.id_producto || '',
-            cantidad: item.cantidad || '',
-            precio_compra: item.precio_compra || '',
-            descuento: item.descuento || '',
-            lote: item.lote || '',
-            fecha_caducidad: item.fecha_caducidad
-              ? item.fecha_caducidad.substring(0, 10)
+        const itemsEdicion = detalle.map((item) => ({
+          id_producto: item.id_producto || '',
+          id_variante: item.id_variante || '',
+          modo_variante: 'EXISTENTE',
+          atributos_variante: {},
+          nombre_variante: '',
+          sku_variante: '',
+          codigo_barras_variante: '',
+          cantidad: item.cantidad || '',
+          precio_compra: item.precio_compra || '',
+          descuento: item.descuento || '',
+          lote:
+            item.lote && item.lote !== 'SIN-LOTE'
+              ? item.lote
               : '',
-            ubicacion: item.ubicacion || '',
-            observaciones: item.observaciones || '',
-          }))
-        );
+          fecha_caducidad: item.fecha_caducidad
+            ? item.fecha_caducidad.substring(0, 10)
+            : '',
+          ubicacion: item.ubicacion || '',
+          observaciones: item.observaciones || '',
+        }));
+
+        setItems(itemsEdicion);
 
         setCompraEditandoId(idCompra);
         setTicketFile(null);
         setTicketPreview('');
         await cargarCajasYSesion(compra.id_sucursal);
+
+        const productosConVariantes = [
+          ...new Set(
+            detalle
+              .filter((item) => item.id_variante)
+              .map((item) => Number(item.id_producto))
+          ),
+        ];
+
+        await Promise.all(
+          productosConVariantes.map((idProducto) =>
+            cargarVariantesProducto(idProducto, compra.id_sucursal)
+          )
+        );
+
         setModalCompra(true);
       }
     } catch (error) {
@@ -1829,6 +2231,28 @@ export default function Compras() {
                         0
                       );
 
+                      const productoSeleccionado = obtenerProductoPorId(item.id_producto);
+                      const usaVariantes = esVerdadero(productoSeleccionado?.usa_variantes);
+                      const controlaCaducidad = esVerdadero(
+                        productoSeleccionado?.controla_caducidad
+                      );
+                      const controlaLotes =
+                        esVerdadero(productoSeleccionado?.controla_lotes) ||
+                        controlaCaducidad;
+                      const variantesItem = obtenerVariantesItem(item);
+                      const cargandoVariantesItem =
+                        cargandoVariantes[Number(item.id_producto)] || false;
+                      const varianteSeleccionada = variantesItem.find(
+                        (variante) =>
+                          Number(variante.id_variante) === Number(item.id_variante)
+                      );
+                      const camposVariante = usaVariantes
+                        ? obtenerCamposVariantes(productoSeleccionado)
+                        : [];
+                      const crearNuevaVariante = usaVariantes
+                        ? itemUsaNuevaVariante(item, productoSeleccionado)
+                        : false;
+
                       return (
                         <div key={index} className="rounded-[1.6rem] border border-[#F0E2E7] bg-[#FFFAFB] p-4 sm:p-5">
                           <div className="flex items-center justify-between gap-3 mb-4">
@@ -1847,7 +2271,7 @@ export default function Compras() {
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                            <div className="md:col-span-4 min-w-0">
+                            <div className={usaVariantes ? 'md:col-span-4 min-w-0' : 'md:col-span-4 min-w-0'}>
                               <label className="mb-2 block text-sm font-black text-[#5D4A51]">Producto *</label>
                               <select
                                 value={item.id_producto}
@@ -1858,10 +2282,180 @@ export default function Compras() {
                                 {productos.map((producto) => (
                                   <option key={producto.id_producto} value={producto.id_producto}>
                                     {producto.nombre}
+                                    {esVerdadero(producto.usa_variantes) ? ' · variantes' : ''}
                                   </option>
                                 ))}
                               </select>
+
+                              {productoSeleccionado && (
+                                <p className="mt-2 text-xs text-[#8C777F]">
+                                  {usaVariantes
+                                    ? 'Este producto requiere seleccionar una variante.'
+                                    : 'Producto simple.'}
+                                  {controlaLotes ? ' Controla lotes.' : ''}
+                                  {controlaCaducidad ? ' Controla caducidad.' : ''}
+                                </p>
+                              )}
                             </div>
+
+                            {usaVariantes && (
+                              <div className="md:col-span-4 min-w-0">
+                                <label className="mb-2 block text-sm font-black text-[#5D4A51]">
+                                  Variante *
+                                </label>
+
+                                {variantesItem.length > 0 && (
+                                  <select
+                                    value={crearNuevaVariante ? 'NUEVA' : 'EXISTENTE'}
+                                    onChange={(e) =>
+                                      actualizarItem(index, 'modo_variante', e.target.value)
+                                    }
+                                    className={`${inputModalClass} mb-2`}
+                                    disabled={cargandoVariantesItem}
+                                  >
+                                    <option value="EXISTENTE">Usar variante existente</option>
+                                    <option value="NUEVA">Crear nueva combinación</option>
+                                  </select>
+                                )}
+
+                                {!crearNuevaVariante ? (
+                                  <select
+                                    value={item.id_variante}
+                                    onChange={(e) =>
+                                      actualizarItem(index, 'id_variante', e.target.value)
+                                    }
+                                    className={inputModalClass}
+                                    disabled={cargandoVariantesItem}
+                                  >
+                                    <option value="">
+                                      {cargandoVariantesItem
+                                        ? 'Cargando variantes...'
+                                        : 'Selecciona variante'}
+                                    </option>
+
+                                    {variantesItem.map((variante) => (
+                                      <option
+                                        key={variante.id_variante}
+                                        value={variante.id_variante}
+                                      >
+                                        {obtenerEtiquetaVariante(variante)}
+                                        {variante.sku ? ` · SKU ${variante.sku}` : ''}
+                                        {` · Stock actual ${formatoNumero(variante.stock_sucursal || 0)}`}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <div className="rounded-xl border border-[#F0D4DE] bg-[#FFF2F5] px-3 py-3 text-sm text-[#7D5362]">
+                                    {variantesItem.length === 0
+                                      ? 'No hay combinaciones registradas. Captura la primera variante en esta compra.'
+                                      : 'Captura abajo los datos de la nueva combinación.'}
+                                  </div>
+                                )}
+
+                                {varianteSeleccionada && !crearNuevaVariante && (
+                                  <div className="mt-2 rounded-xl border border-[#F0D4DE] bg-[#FFF2F5] px-3 py-2 text-xs text-[#7D5362]">
+                                    <b>{obtenerEtiquetaVariante(varianteSeleccionada)}</b>
+                                    <span className="block mt-1">
+                                      Stock actual en sucursal:{' '}
+                                      {formatoNumero(varianteSeleccionada.stock_sucursal || 0)}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {usaVariantes && crearNuevaVariante && (
+                              <div className="md:col-span-12 rounded-2xl border border-[#F0D4DE] bg-white p-4">
+                                <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                                  <div>
+                                    <p className="font-black text-[#5D4A51]">
+                                      Nueva combinación de variante
+                                    </p>
+                                    <p className="text-xs text-[#8C777F]">
+                                      Se creará al guardar la compra y el stock entrará directamente a esta variante.
+                                    </p>
+                                  </div>
+                                  <span className="rounded-full bg-[#FFF0F4] px-3 py-1 text-xs font-bold text-[#A84E6C]">
+                                    {camposVariante.length} atributo{camposVariante.length === 1 ? '' : 's'} requerido{camposVariante.length === 1 ? '' : 's'}
+                                  </span>
+                                </div>
+
+                                {camposVariante.length === 0 ? (
+                                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800">
+                                    Este producto tiene activadas las variantes, pero no tiene dimensiones configuradas. Edita el producto y selecciona talla, color, género u otros atributos antes de registrar la compra.
+                                  </div>
+                                ) : (
+                                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                    {camposVariante.map((campo) => (
+                                      <div key={campo.clave} className="min-w-0">
+                                        <label className="mb-2 block text-xs font-black text-[#5D4A51]">
+                                          {campo.etiqueta} *
+                                        </label>
+
+                                        {campo.tipo === 'select' ? (
+                                          <select
+                                            value={item.atributos_variante?.[campo.clave] || ''}
+                                            onChange={(e) =>
+                                              actualizarAtributoVariante(index, campo.clave, e.target.value)
+                                            }
+                                            className={inputModalClass}
+                                          >
+                                            <option value="">Selecciona</option>
+                                            {(campo.opciones || []).map((opcion) => (
+                                              <option key={opcion} value={opcion}>
+                                                {opcion}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        ) : (
+                                          <input
+                                            type="text"
+                                            value={item.atributos_variante?.[campo.clave] || ''}
+                                            onChange={(e) =>
+                                              actualizarAtributoVariante(index, campo.clave, e.target.value)
+                                            }
+                                            className={inputModalClass}
+                                            placeholder={campo.placeholder || campo.etiqueta}
+                                          />
+                                        )}
+                                      </div>
+                                    ))}
+
+                                    <div className="min-w-0">
+                                      <label className="mb-2 block text-xs font-black text-[#5D4A51]">
+                                        Nombre de variante
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={item.nombre_variante || ''}
+                                        onChange={(e) =>
+                                          actualizarItem(index, 'nombre_variante', e.target.value)
+                                        }
+                                        className={inputModalClass}
+                                        placeholder="Opcional, se genera automáticamente"
+                                      />
+                                    </div>
+
+                                   
+
+                                    <div className="min-w-0">
+                                      <label className="mb-2 block text-xs font-black text-[#5D4A51]">
+                                        Código de barras
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={item.codigo_barras_variante || ''}
+                                        onChange={(e) =>
+                                          actualizarItem(index, 'codigo_barras_variante', e.target.value)
+                                        }
+                                        className={inputModalClass}
+                                        placeholder="Opcional"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
 
                             <div className="md:col-span-2 min-w-0">
                               <label className="mb-2 block text-sm font-black text-[#5D4A51]">Cantidad *</label>
@@ -1906,25 +2500,37 @@ export default function Compras() {
                               </div>
                             </div>
 
-                            <div className="md:col-span-3 min-w-0">
-                              <label className="mb-2 block text-sm font-black text-[#5D4A51]">Lote</label>
-                              <input
-                                value={item.lote}
-                                onChange={(e) => actualizarItem(index, 'lote', e.target.value)}
-                                className="w-full min-w-0 px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#E5AFC0] bg-white uppercase"
-                                placeholder="Ej. PAR-2027-A"
-                              />
-                            </div>
+                            {controlaLotes && (
+                              <div className="md:col-span-3 min-w-0">
+                                <label className="mb-2 block text-sm font-black text-[#5D4A51]">
+                                  Lote *
+                                </label>
+                                <input
+                                  value={item.lote}
+                                  onChange={(e) =>
+                                    actualizarItem(index, 'lote', e.target.value)
+                                  }
+                                  className="w-full min-w-0 px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#E5AFC0] bg-white uppercase"
+                                  placeholder="Ej. PAR-2027-A"
+                                />
+                              </div>
+                            )}
 
-                            <div className="md:col-span-3 min-w-0">
-                              <label className="mb-2 block text-sm font-black text-[#5D4A51]">Fecha caducidad</label>
-                              <input
-                                type="date"
-                                value={item.fecha_caducidad}
-                                onChange={(e) => actualizarItem(index, 'fecha_caducidad', e.target.value)}
-                                className={inputModalClass}
-                              />
-                            </div>
+                            {controlaCaducidad && (
+                              <div className="md:col-span-3 min-w-0">
+                                <label className="mb-2 block text-sm font-black text-[#5D4A51]">
+                                  Fecha caducidad *
+                                </label>
+                                <input
+                                  type="date"
+                                  value={item.fecha_caducidad}
+                                  onChange={(e) =>
+                                    actualizarItem(index, 'fecha_caducidad', e.target.value)
+                                  }
+                                  className={inputModalClass}
+                                />
+                              </div>
+                            )}
 
                             <div className="md:col-span-3 min-w-0">
                               <label className="mb-2 block text-sm font-black text-[#5D4A51]">
@@ -2246,8 +2852,26 @@ export default function Compras() {
                       {detalleProductos.map((item) => (
                         <div key={item.id_detalle} className="rounded-2xl border border-[#F0E4E8] p-4 bg-white">
                           <p className="font-bold text-[#43353A] break-words">{item.producto}</p>
-                          <p className="text-xs text-[#8C777F] mt-1">Lote: {item.lote || '—'}</p>
-                          <p className="text-xs text-[#8C777F] mt-1">Caducidad: {formatoFechaSimple(item.fecha_caducidad)}</p>
+                          {item.id_variante && (
+                            <p className="mt-1 text-sm font-bold text-[#A84E6C]">
+                              Variante: {obtenerEtiquetaVariante(item)}
+                            </p>
+                          )}
+                          {item.id_variante && (
+                            <p className="text-xs text-[#8C777F] mt-1">
+                              SKU / código: {item.sku_variante || item.codigo_barras_variante || '—'}
+                            </p>
+                          )}
+                          {esVerdadero(item.controla_lotes) && (
+                            <p className="text-xs text-[#8C777F] mt-1">
+                              Lote: {item.lote || '—'}
+                            </p>
+                          )}
+                          {esVerdadero(item.controla_caducidad) && (
+                            <p className="text-xs text-[#8C777F] mt-1">
+                              Caducidad: {formatoFechaSimple(item.fecha_caducidad)}
+                            </p>
+                          )}
 
                           <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
                             <div className="rounded-xl bg-[#FFFAFB] p-3">
@@ -2275,7 +2899,8 @@ export default function Compras() {
                       <table className="w-full min-w-[850px]">
                         <thead className="bg-[#FFFAFB]">
                           <tr>
-                            <th className="px-4 py-3 text-left text-xs font-bold text-[#8C777F] uppercase">Producto</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-[#8C777F] uppercase">Producto / variante</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-[#8C777F] uppercase">SKU / código</th>
                             <th className="px-4 py-3 text-left text-xs font-bold text-[#8C777F] uppercase">Lote</th>
                             <th className="px-4 py-3 text-left text-xs font-bold text-[#8C777F] uppercase">Caducidad</th>
                             <th className="px-4 py-3 text-right text-xs font-bold text-[#8C777F] uppercase">Cantidad</th>
@@ -2287,9 +2912,25 @@ export default function Compras() {
                         <tbody className="divide-y divide-[#F5EAED]">
                           {detalleProductos.map((item) => (
                             <tr key={item.id_detalle}>
-                              <td className="px-4 py-3 font-semibold text-[#43353A]">{item.producto}</td>
-                              <td className="px-4 py-3 text-[#766168]">{item.lote || '—'}</td>
-                              <td className="px-4 py-3 text-[#766168]">{formatoFechaSimple(item.fecha_caducidad)}</td>
+                              <td className="px-4 py-3 font-semibold text-[#43353A]">
+                                <div>{item.producto}</div>
+                                {item.id_variante && (
+                                  <div className="mt-1 text-xs font-bold text-[#A84E6C]">
+                                    {obtenerEtiquetaVariante(item)}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-[#766168]">
+                                {item.sku_variante || item.codigo_barras_variante || '—'}
+                              </td>
+                              <td className="px-4 py-3 text-[#766168]">
+                                {esVerdadero(item.controla_lotes) ? item.lote || '—' : 'No aplica'}
+                              </td>
+                              <td className="px-4 py-3 text-[#766168]">
+                                {esVerdadero(item.controla_caducidad)
+                                  ? formatoFechaSimple(item.fecha_caducidad)
+                                  : 'No aplica'}
+                              </td>
                               <td className="px-4 py-3 text-right font-bold text-[#43353A]">{formatoNumero(item.cantidad)}</td>
                               <td className="px-4 py-3 text-right text-[#66535A]">{formatoMoneda(item.precio_compra)}</td>
                               <td className="px-4 py-3 text-right text-red-700">{formatoMoneda(item.descuento)}</td>

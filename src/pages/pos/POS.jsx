@@ -127,6 +127,109 @@ const obtenerEstadoCaducidadLote = (fechaCaducidad) => {
   };
 };
 
+
+const configuracionVariantesPOSDefault = {
+  talla: false,
+  color: false,
+  tono: false,
+  genero: false,
+  presentacion: false,
+  material: false,
+  modelo: false,
+  aroma: false,
+  capacidad: false,
+  personalizados: [],
+};
+
+const normalizarConfiguracionVariantesPOS = (valor) => {
+  let origen = valor;
+
+  if (typeof origen === 'string') {
+    try {
+      origen = JSON.parse(origen);
+    } catch {
+      origen = {};
+    }
+  }
+
+  if (!origen || typeof origen !== 'object' || Array.isArray(origen)) {
+    origen = {};
+  }
+
+  return {
+    ...configuracionVariantesPOSDefault,
+    ...origen,
+    personalizados: Array.isArray(origen.personalizados)
+      ? origen.personalizados
+      : [],
+  };
+};
+
+const etiquetasAtributosPOS = {
+  talla: 'Talla / medida',
+  color: 'Color',
+  tono: 'Tono',
+  genero: 'Género / línea',
+  presentacion: 'Presentación',
+  material: 'Material',
+  modelo: 'Modelo / estilo',
+  aroma: 'Aroma',
+  capacidad: 'Capacidad / volumen',
+};
+
+const obtenerDetalleVariantePOS = (producto, variante) => {
+  const configuracion = normalizarConfiguracionVariantesPOS(
+    producto?.configuracion_variantes
+  );
+
+  const atributos =
+    variante?.atributos &&
+    typeof variante.atributos === 'object' &&
+    !Array.isArray(variante.atributos)
+      ? variante.atributos
+      : {};
+
+  const clavesBase = [
+    'talla',
+    'color',
+    'tono',
+    'genero',
+    'presentacion',
+    'material',
+    'modelo',
+    'aroma',
+    'capacidad',
+  ].filter((clave) => configuracion[clave]);
+
+  const personalizados = (configuracion.personalizados || [])
+    .map((item) => ({
+      clave: String(item?.clave || '').trim(),
+      etiqueta: String(item?.etiqueta || '').trim(),
+    }))
+    .filter((item) => item.clave && item.etiqueta);
+
+  const detalles = [
+    ...clavesBase.map((clave) => ({
+      clave,
+      etiqueta: etiquetasAtributosPOS[clave] || clave,
+      valor: variante?.[clave] ?? atributos?.[clave] ?? '',
+    })),
+    ...personalizados.map((item) => ({
+      clave: item.clave,
+      etiqueta: item.etiqueta,
+      valor: atributos?.[item.clave] ?? variante?.[item.clave] ?? '',
+    })),
+  ].filter((item) => String(item.valor || '').trim());
+
+  if (detalles.length > 0) return detalles;
+
+  return [
+    { clave: 'talla', etiqueta: 'Talla', valor: variante?.talla },
+    { clave: 'color', etiqueta: 'Color', valor: variante?.color },
+    { clave: 'tono', etiqueta: 'Tono', valor: variante?.tono },
+  ].filter((item) => String(item.valor || '').trim());
+};
+
 export default function POS() {
   const { usuario } = useAuth();
 
@@ -174,6 +277,9 @@ export default function POS() {
   const [cargandoConfiguracionCorreo, setCargandoConfiguracionCorreo] = useState(false);
   const [enviarTicketDigital, setEnviarTicketDigital] = useState(false);
 
+  const [modalVariantesProducto, setModalVariantesProducto] = useState(false);
+  const [productoSeleccionadoVariantes, setProductoSeleccionadoVariantes] = useState(null);
+
   const [modalLotesProducto, setModalLotesProducto] = useState(false);
   const [productoSeleccionadoLotes, setProductoSeleccionadoLotes] = useState(null);
   const [lotesProducto, setLotesProducto] = useState([]);
@@ -213,6 +319,64 @@ export default function POS() {
       esValorActivo(producto?.usa_lotes) ||
       esValorActivo(producto?.maneja_lotes)
     );
+  };
+
+  const productoUsaVariantes = (producto) => {
+    return esValorActivo(producto?.usa_variantes);
+  };
+
+  const construirProductoConVariante = (producto, variante) => {
+    const precioVariante =
+      variante?.precio_venta !== undefined &&
+      variante?.precio_venta !== null &&
+      variante?.precio_venta !== ''
+        ? Number(variante.precio_venta)
+        : Number(producto?.precio_venta || 0);
+
+    const porcentaje = Number(producto?.porcentaje_descuento || 0);
+    const tieneOferta = tieneOfertaActiva(producto);
+
+    const descuentoUnitario = tieneOferta
+      ? Number((precioVariante * (porcentaje / 100)).toFixed(2))
+      : 0;
+
+    const precioConDescuento = tieneOferta
+      ? Number((precioVariante - descuentoUnitario).toFixed(2))
+      : precioVariante;
+
+    const detalle = obtenerDetalleVariantePOS(producto, variante);
+
+    return {
+      ...producto,
+      id_variante: Number(variante.id_variante),
+      nombre_variante:
+        variante.nombre_variante ||
+        detalle.map((item) => item.valor).filter(Boolean).join(' · ') ||
+        `Variante ${variante.id_variante}`,
+      sku: variante.sku || null,
+      codigo_barras_variante: variante.codigo_barras || null,
+      codigo_barras: variante.codigo_barras || producto.codigo_barras || null,
+      talla: variante.talla || variante.atributos?.talla || null,
+      color: variante.color || variante.atributos?.color || null,
+      tono: variante.tono || variante.atributos?.tono || null,
+      presentacion:
+        variante.presentacion ||
+        variante.atributos?.presentacion ||
+        producto.presentacion ||
+        null,
+      atributos_variante:
+        variante.atributos &&
+        typeof variante.atributos === 'object' &&
+        !Array.isArray(variante.atributos)
+          ? variante.atributos
+          : {},
+      detalle_variante: detalle,
+      stock_actual: Number(variante.stock_actual || 0),
+      stock_minimo: Number(variante.stock_minimo || 0),
+      precio_venta: precioVariante,
+      precio_con_descuento: precioConDescuento,
+      descuento_unitario: descuentoUnitario,
+    };
   };
 
   const obtenerPrecioFinalProducto = (producto) => {
@@ -574,7 +738,16 @@ export default function POS() {
       const { data } = await api.get(`/inventario/lotes?${params.toString()}`);
 
       if (data.ok) {
-        return (data.lotes || []).filter((lote) => Number(lote.stock_actual || 0) > 0);
+        return (data.lotes || []).filter((lote) => {
+          const tieneStock = Number(lote.stock_actual || 0) > 0;
+          if (!tieneStock) return false;
+
+          if (producto.id_variante) {
+            return Number(lote.id_variante || 0) === Number(producto.id_variante);
+          }
+
+          return !lote.id_variante;
+        });
       }
 
       return [];
@@ -684,6 +857,8 @@ export default function POS() {
       fecha_caducidad: lote?.fecha_caducidad || null,
       stock_lote: idLote ? stockDisponible : null,
       nombre: producto.producto || producto.nombre,
+      nombre_variante: producto.nombre_variante || null,
+      sku: producto.sku || null,
       codigo_barras: producto.codigo_barras,
       categoria: producto.categoria,
       marca: producto.marca || null,
@@ -691,6 +866,8 @@ export default function POS() {
       talla: producto.talla || null,
       color: producto.color || null,
       tono: producto.tono || null,
+      atributos_variante: producto.atributos_variante || {},
+      detalle_variante: producto.detalle_variante || [],
       precio_original: precioOriginal,
       precio_venta: precioFinal,
       tiene_oferta: tieneOferta,
@@ -784,7 +961,64 @@ export default function POS() {
     setModalLotesProducto(true);
   };
 
+  const cerrarModalVariantesProducto = () => {
+    setModalVariantesProducto(false);
+    setProductoSeleccionadoVariantes(null);
+  };
+
+  const seleccionarVariantePOS = async (producto, variante) => {
+    if (!producto || !variante) return;
+
+    const productoConVariante = construirProductoConVariante(
+      producto,
+      variante
+    );
+
+    if (Number(productoConVariante.stock_actual || 0) <= 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Variante sin stock',
+        text: 'La variante seleccionada ya no tiene existencia disponible.',
+      });
+      return;
+    }
+
+    cerrarModalVariantesProducto();
+    await abrirModalLotesParaProducto(productoConVariante);
+  };
+
   const agregarAlCarrito = async (producto) => {
+    if (!sesionAbierta) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Caja no abierta',
+        text: 'Primero abre una caja para poder vender.',
+      });
+      return;
+    }
+
+    if (productoUsaVariantes(producto)) {
+      const variantesDisponibles = (producto.variantes || []).filter(
+        (variante) => Number(variante.stock_actual || 0) > 0
+      );
+
+      if (variantesDisponibles.length === 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Sin variantes disponibles',
+          text: 'Este producto usa variantes, pero ninguna tiene stock disponible en esta sucursal.',
+        });
+        return;
+      }
+
+      setProductoSeleccionadoVariantes({
+        ...producto,
+        variantes: variantesDisponibles,
+      });
+      setModalVariantesProducto(true);
+      return;
+    }
+
     await abrirModalLotesParaProducto(producto);
   };
 
@@ -2431,6 +2665,7 @@ export default function POS() {
             formatoNumero={formatoNumero}
             tieneOfertaActiva={tieneOfertaActiva}
             productoControlaLotes={productoControlaLotes}
+            productoUsaVariantes={productoUsaVariantes}
             agregarAlCarrito={agregarAlCarrito}
           />
         </div>
@@ -2509,6 +2744,17 @@ export default function POS() {
         </div>
       )}
 
+      {modalVariantesProducto && (
+        <ModalVariantesProducto
+          producto={productoSeleccionadoVariantes}
+          onClose={cerrarModalVariantesProducto}
+          onSeleccionar={seleccionarVariantePOS}
+          formatoMoneda={formatoMoneda}
+          formatoNumero={formatoNumero}
+          tieneOfertaActiva={tieneOfertaActiva}
+        />
+      )}
+
       {modalLotesProducto && (
         <ModalLotesProducto
           producto={productoSeleccionadoLotes}
@@ -2545,6 +2791,7 @@ function ProductosDisponibles({
   formatoNumero,
   tieneOfertaActiva,
   productoControlaLotes,
+  productoUsaVariantes,
   agregarAlCarrito,
 }) {
   const PRODUCTOS_POR_PAGINA = 12;
@@ -2595,6 +2842,7 @@ function ProductosDisponibles({
                   formatoNumero={formatoNumero}
                   tieneOfertaActiva={tieneOfertaActiva}
                   productoControlaLotes={productoControlaLotes}
+                  productoUsaVariantes={productoUsaVariantes}
                   agregarAlCarrito={agregarAlCarrito}
                 />
               ))}
@@ -2640,11 +2888,13 @@ function ProductoCard({
   formatoNumero,
   tieneOfertaActiva,
   productoControlaLotes,
+  productoUsaVariantes,
   agregarAlCarrito,
 }) {
   const oferta = tieneOfertaActiva(item);
   const precioFinal = oferta ? item.precio_con_descuento : item.precio_venta;
   const controlaLotes = productoControlaLotes(item);
+  const usaVariantes = productoUsaVariantes(item);
 
   const atributos = [
     item.marca,
@@ -2696,12 +2946,21 @@ function ProductoCard({
           {formatoNumero(item.stock_actual)}
         </span>
 
-        {controlaLotes && (
-          <span className="inline-flex items-center gap-1 rounded-xl bg-[#FFF0F4] px-2 py-1.5 text-[9px] font-black text-[#A84E6C]">
-            <Layers3 size={11} />
-            Lote
-          </span>
-        )}
+        <div className="flex flex-wrap justify-end gap-1.5">
+          {usaVariantes && (
+            <span className="inline-flex items-center gap-1 rounded-xl bg-[#F0EBF6] px-2 py-1.5 text-[9px] font-black text-[#745D8A]">
+              <Layers3 size={11} />
+              {Number(item.total_variantes || item.variantes?.length || 0)} variante(s)
+            </span>
+          )}
+
+          {controlaLotes && (
+            <span className="inline-flex items-center gap-1 rounded-xl bg-[#FFF0F4] px-2 py-1.5 text-[9px] font-black text-[#A84E6C]">
+              <Layers3 size={11} />
+              Lote
+            </span>
+          )}
+        </div>
       </div>
 
       <button
@@ -2711,7 +2970,11 @@ function ProductoCard({
         className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-2xl bg-[#B85F7D] px-3 py-2.5 text-xs font-black text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#E9DDE1] disabled:text-[#A38F96]"
       >
         <Plus size={17} />
-        {controlaLotes ? 'Elegir' : 'Agregar'}
+        {usaVariantes
+          ? 'Elegir variante'
+          : controlaLotes
+            ? 'Elegir lote'
+            : 'Agregar'}
       </button>
     </article>
   );
@@ -2873,6 +3136,16 @@ function CarritoPOS({
                     <p className="mt-1 text-xs font-black text-[#B85F7D]">
                       {formatoMoneda(item.precio_venta)} c/u
                     </p>
+                    {item.id_variante && (
+                      <p className="mt-1 truncate text-[10px] font-black text-[#745D8A]">
+                        {item.nombre_variante ||
+                          (item.detalle_variante || [])
+                            .map((detalle) => detalle.valor)
+                            .filter(Boolean)
+                            .join(' · ') ||
+                          `Variante ${item.id_variante}`}
+                      </p>
+                    )}
                     {item.id_lote && (
                       <p className="mt-1 truncate text-[10px] font-semibold text-[#9A858D]">
                         Lote {item.lote || '—'} · Cad. {formatoFechaCorta(item.fecha_caducidad)}
@@ -3307,6 +3580,162 @@ function ResumenLinea({ label, valor, destacado = null }) {
     <div className="flex items-center justify-between gap-3 text-xs">
       <span className="font-bold text-[#8B7A80]">{label}</span>
       <span className={`font-black ${color}`}>{valor}</span>
+    </div>
+  );
+}
+
+
+function ModalVariantesProducto({
+  producto,
+  onClose,
+  onSeleccionar,
+  formatoMoneda,
+  formatoNumero,
+  tieneOfertaActiva,
+}) {
+  const variantes = (producto?.variantes || []).filter(
+    (variante) => Number(variante.stock_actual || 0) > 0
+  );
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#392F33]/45 p-4 backdrop-blur-sm">
+      <div className="relative z-[81] flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-[2rem] bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[#F4EAED] px-6 py-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-wide text-[#745D8A]">
+              Variantes disponibles
+            </p>
+            <h2 className="text-xl font-black text-[#392F33]">
+              Seleccionar variante
+            </h2>
+            <p className="text-sm text-[#8B7A80]">
+              Elige la combinación exacta que se venderá.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#F0EBF6] text-[#745D8A]"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto p-5">
+          <div className="rounded-2xl bg-[#FFFAFB] p-4">
+            <p className="font-black text-[#392F33]">
+              {producto?.producto || producto?.nombre || 'Producto'}
+            </p>
+            <p className="mt-1 text-xs text-[#9A858D]">
+              {producto?.codigo_barras
+                ? `Código general: ${producto.codigo_barras}`
+                : 'Sin código general'}
+              {producto?.marca ? ` · ${producto.marca}` : ''}
+            </p>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {variantes.length === 0 ? (
+              <div className="sm:col-span-2">
+                <EstadoTabla texto="No hay variantes con stock disponible." />
+              </div>
+            ) : (
+              variantes.map((variante) => {
+                const detalle = obtenerDetalleVariantePOS(producto, variante);
+
+                const precioVariante =
+                  variante?.precio_venta !== undefined &&
+                  variante?.precio_venta !== null &&
+                  variante?.precio_venta !== ''
+                    ? Number(variante.precio_venta)
+                    : Number(producto?.precio_venta || 0);
+
+                const porcentaje = Number(
+                  producto?.porcentaje_descuento || 0
+                );
+
+                const precioFinal = tieneOfertaActiva(producto)
+                  ? Number(
+                      (
+                        precioVariante -
+                        precioVariante * (porcentaje / 100)
+                      ).toFixed(2)
+                    )
+                  : precioVariante;
+
+                return (
+                  <button
+                    key={variante.id_variante}
+                    type="button"
+                    onClick={() => onSeleccionar(producto, variante)}
+                    className="rounded-3xl border border-[#E8DCE1] bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-[#C9B4CC] hover:bg-[#FFFCFD] hover:shadow-md"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-black text-[#392F33]">
+                          {variante.nombre_variante ||
+                            detalle
+                              .map((item) => item.valor)
+                              .filter(Boolean)
+                              .join(' · ') ||
+                            `Variante ${variante.id_variante}`}
+                        </p>
+
+                        {(variante.sku || variante.codigo_barras) && (
+                          <p className="mt-1 truncate text-[10px] font-semibold text-[#9A858D]">
+                            {variante.sku ? `SKU ${variante.sku}` : ''}
+                            {variante.sku && variante.codigo_barras ? ' · ' : ''}
+                            {variante.codigo_barras
+                              ? `Código ${variante.codigo_barras}`
+                              : ''}
+                          </p>
+                        )}
+                      </div>
+
+                      <span className="shrink-0 rounded-full bg-[#F0EBF6] px-2.5 py-1 text-[10px] font-black text-[#745D8A]">
+                        {formatoNumero(variante.stock_actual)} disp.
+                      </span>
+                    </div>
+
+                    {detalle.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {detalle.map((item) => (
+                          <span
+                            key={`${variante.id_variante}-${item.clave}`}
+                            className="rounded-full bg-[#FFF3F6] px-2.5 py-1 text-[10px] font-black text-[#8E596B]"
+                          >
+                            {item.etiqueta}: {item.valor}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="mt-4 flex items-end justify-between gap-3 border-t border-[#F4EAED] pt-3">
+                      <div>
+                        {tieneOfertaActiva(producto) &&
+                          precioFinal !== precioVariante && (
+                            <p className="text-[10px] font-bold text-[#B5A1A8] line-through">
+                              {formatoMoneda(precioVariante)}
+                            </p>
+                          )}
+                        <p className="text-lg font-black text-[#B85F7D]">
+                          {formatoMoneda(precioFinal)}
+                        </p>
+                      </div>
+
+                      <span className="inline-flex items-center gap-1 text-xs font-black text-[#745D8A]">
+                        Seleccionar
+                        <CheckCircle size={15} />
+                      </span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -18,6 +18,11 @@ import {
   FileSpreadsheet,
   Sparkles,
   MoreHorizontal,
+  CalendarClock,
+  Layers3,
+  MapPin,
+  BadgeDollarSign,
+  Eye,
 } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
@@ -40,11 +45,13 @@ const formAsignarInicial = {
   fecha_caducidad: '',
   precio_compra: '',
   observaciones: '',
+  variantes: [],
 };
 
 const formMovimientoInicial = {
   id_sucursal: '',
   id_producto: '',
+  id_variante: '',
   id_proveedor: '',
   id_lote: '',
   tipo_movimiento: 'ENTRADA',
@@ -109,6 +116,174 @@ const normalizarTexto = (valor) => {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
+};
+
+const esVerdadero = (valor) => {
+  return valor === true || valor === 'true' || valor === 1 || valor === '1';
+};
+
+const configuracionVariantesDefault = {
+  talla: false,
+  color: false,
+  tono: false,
+  genero: false,
+  presentacion: false,
+  material: false,
+  modelo: false,
+  aroma: false,
+  capacidad: false,
+  personalizados: [],
+};
+
+const definicionesVariantes = {
+  talla: {
+    etiqueta: 'Talla / medida',
+    placeholder: 'Ej. CH, M, G, 26, 28',
+  },
+  color: {
+    etiqueta: 'Color',
+    placeholder: 'Ej. Negro, Rosa, Azul marino',
+  },
+  tono: {
+    etiqueta: 'Tono',
+    placeholder: 'Ej. 05 Nude, Claro, Oscuro',
+  },
+  genero: {
+    etiqueta: 'Género / línea',
+    placeholder: 'Selecciona...',
+    tipo: 'select',
+    opciones: ['Hombre', 'Mujer', 'Unisex', 'Niño', 'Niña'],
+  },
+  presentacion: {
+    etiqueta: 'Presentación',
+    placeholder: 'Ej. Pieza, caja, set',
+  },
+  material: {
+    etiqueta: 'Material',
+    placeholder: 'Ej. Algodón, piel, poliéster',
+  },
+  modelo: {
+    etiqueta: 'Modelo / estilo',
+    placeholder: 'Ej. Slim, clásico, deportivo',
+  },
+  aroma: {
+    etiqueta: 'Aroma',
+    placeholder: 'Ej. Floral, cítrico, vainilla',
+  },
+  capacidad: {
+    etiqueta: 'Capacidad / volumen',
+    placeholder: 'Ej. 50 ml, 100 ml, 500 g',
+  },
+};
+
+const normalizarConfiguracionVariantes = (valor) => {
+  let origen = valor;
+
+  if (typeof origen === 'string') {
+    try {
+      origen = JSON.parse(origen);
+    } catch {
+      origen = {};
+    }
+  }
+
+  if (!origen || typeof origen !== 'object' || Array.isArray(origen)) {
+    origen = {};
+  }
+
+  return {
+    ...configuracionVariantesDefault,
+    ...origen,
+    personalizados: Array.isArray(origen.personalizados)
+      ? origen.personalizados
+          .map((item) => ({
+            clave: String(item?.clave || '').trim(),
+            etiqueta: String(item?.etiqueta || '').trim(),
+          }))
+          .filter((item) => item.clave && item.etiqueta)
+      : [],
+  };
+};
+
+const obtenerCamposVariantes = (configuracion) => {
+  const config = normalizarConfiguracionVariantes(configuracion);
+
+  const camposBase = Object.entries(definicionesVariantes)
+    .filter(([clave]) => esVerdadero(config[clave]))
+    .map(([clave, definicion]) => ({
+      clave,
+      ...definicion,
+    }));
+
+  const personalizados = (config.personalizados || []).map((item) => ({
+    clave: item.clave,
+    etiqueta: item.etiqueta,
+    placeholder: `Ej. ${item.etiqueta}`,
+  }));
+
+  return [...camposBase, ...personalizados];
+};
+
+let consecutivoVarianteTemporal = 0;
+
+const crearVarianteInventario = (campos = []) => {
+  consecutivoVarianteTemporal += 1;
+
+  const atributos = {};
+  campos.forEach((campo) => {
+    atributos[campo.clave] = '';
+  });
+
+  return {
+    id_temporal: `var-${Date.now()}-${consecutivoVarianteTemporal}`,
+    nombre_variante: '',
+    sku: '',
+    codigo_barras: '',
+    stock_inicial: '',
+    atributos,
+  };
+};
+
+const obtenerNombreVariante = (variante, campos = []) => {
+  const partes = campos
+    .map((campo) => String(variante?.atributos?.[campo.clave] || '').trim())
+    .filter(Boolean);
+
+  return (
+    String(variante?.nombre_variante || '').trim() ||
+    partes.join(' · ') ||
+    'Variante'
+  );
+};
+
+const obtenerEtiquetaVarianteGuardada = (variante) => {
+  if (!variante) return 'Variante';
+
+  const atributos =
+    variante.atributos &&
+    typeof variante.atributos === 'object' &&
+    !Array.isArray(variante.atributos)
+      ? variante.atributos
+      : {};
+
+  return (
+    variante.nombre_variante ||
+    [
+      variante.talla,
+      variante.color,
+      variante.tono,
+      variante.presentacion,
+      atributos.genero,
+      atributos.material,
+      atributos.modelo,
+      atributos.aroma,
+      atributos.capacidad,
+    ]
+      .filter(Boolean)
+      .join(' · ') ||
+    variante.sku ||
+    `Variante #${variante.id_variante || ''}`
+  );
 };
 
 function ProductoSearchSelect({
@@ -381,18 +556,116 @@ export default function Inventario() {
       inventario.map((item) => Number(item.id_producto))
     );
 
-    return productos.filter(
-      (producto) =>
-        producto.activo &&
-        !productosInventario.has(Number(producto.id_producto))
-    );
+    return productos.filter((producto) => {
+      if (!producto.activo) return false;
+
+      const yaTieneInventario = productosInventario.has(
+        Number(producto.id_producto)
+      );
+
+      // Los productos simples solo se asignan una vez.
+      // Los productos con variantes pueden volver a abrirse para
+      // incorporar nuevas combinaciones o sumar stock por variante.
+      return !yaTieneInventario || esVerdadero(producto.usa_variantes);
+    });
   }, [productos, inventario]);
+
+  const productoAsignacionSeleccionado = useMemo(() => {
+    return productos.find(
+      (producto) =>
+        Number(producto.id_producto) === Number(formAsignar.id_producto)
+    );
+  }, [productos, formAsignar.id_producto]);
+
+  const inventarioAsignacionExistente = useMemo(() => {
+    return inventario.find(
+      (item) =>
+        Number(item.id_producto) === Number(formAsignar.id_producto)
+    );
+  }, [inventario, formAsignar.id_producto]);
+
+  const asignacionUsaVariantes = esVerdadero(
+    productoAsignacionSeleccionado?.usa_variantes
+  );
+
+  const asignacionControlaLotes = esVerdadero(
+    productoAsignacionSeleccionado?.controla_lotes
+  );
+
+  const asignacionControlaCaducidad = esVerdadero(
+    productoAsignacionSeleccionado?.controla_caducidad
+  );
+
+  const configuracionVariantesAsignacion = useMemo(
+    () =>
+      normalizarConfiguracionVariantes(
+        productoAsignacionSeleccionado?.configuracion_variantes
+      ),
+    [productoAsignacionSeleccionado]
+  );
+
+  const camposVariantesAsignacion = useMemo(
+    () => obtenerCamposVariantes(configuracionVariantesAsignacion),
+    [configuracionVariantesAsignacion]
+  );
+
+  const productoMovimientoSeleccionado = useMemo(() => {
+    return (
+      inventario.find(
+        (item) =>
+          Number(item.id_producto) === Number(formMovimiento.id_producto)
+      ) ||
+      productos.find(
+        (item) =>
+          Number(item.id_producto) === Number(formMovimiento.id_producto)
+      ) ||
+      null
+    );
+  }, [inventario, productos, formMovimiento.id_producto]);
+
+  const movimientoUsaVariantes = esVerdadero(
+    productoMovimientoSeleccionado?.usa_variantes
+  );
+
+  const variantesMovimientoDisponibles = useMemo(() => {
+    return Array.isArray(productoMovimientoSeleccionado?.variantes)
+      ? productoMovimientoSeleccionado.variantes
+      : [];
+  }, [productoMovimientoSeleccionado]);
+
+  const varianteMovimientoSeleccionada = useMemo(() => {
+    return variantesMovimientoDisponibles.find(
+      (variante) =>
+        Number(variante.id_variante) === Number(formMovimiento.id_variante)
+    );
+  }, [variantesMovimientoDisponibles, formMovimiento.id_variante]);
+
+  const stockInicialVariantes = useMemo(() => {
+    return (formAsignar.variantes || []).reduce(
+      (total, variante) => total + Number(variante.stock_inicial || 0),
+      0
+    );
+  }, [formAsignar.variantes]);
 
   const resumen = useMemo(() => {
     const totalProductos = inventarioFiltrado.length;
 
     const productosBajoStock = inventarioFiltrado.filter(
       (item) => item.bajo_stock
+    ).length;
+
+    const totalUnidades = inventarioFiltrado.reduce(
+      (acc, item) => acc + Number(item.stock_actual || 0),
+      0
+    );
+
+    const totalLotes = inventarioFiltrado.reduce(
+      (acc, item) => acc + Number(item.total_lotes || 0),
+      0
+    );
+
+    const productosConVariantes = inventarioFiltrado.filter((item) =>
+      esVerdadero(item.usa_variantes)
     ).length;
 
     const valorInventario = inventarioFiltrado.reduce((acc, item) => {
@@ -412,6 +685,9 @@ export default function Inventario() {
     return {
       totalProductos,
       productosBajoStock,
+      totalUnidades,
+      totalLotes,
+      productosConVariantes,
       valorInventario,
       valorVentaEstimado,
     };
@@ -972,6 +1248,7 @@ export default function Inventario() {
       ...formMovimientoInicial,
       id_sucursal: idSucursal,
       id_producto: loteItem.id_producto || productoInventario?.id_producto || '',
+      id_variante: loteItem.id_variante || '',
       id_lote: loteItem.id_lote || '',
       id_proveedor: loteItem.id_proveedor || '',
       tipo_movimiento: tipo,
@@ -1173,10 +1450,89 @@ export default function Inventario() {
   const handleAsignarChange = (e) => {
     const { name, value } = e.target;
 
-    setFormAsignar({
-      ...formAsignar,
-      [name]: value,
+    setFormAsignar((prev) => {
+      if (name === 'id_producto') {
+        const productoSeleccionado = productos.find(
+          (producto) => Number(producto.id_producto) === Number(value)
+        );
+
+        const usaVariantes = esVerdadero(productoSeleccionado?.usa_variantes);
+        const camposVariantes = obtenerCamposVariantes(
+          productoSeleccionado?.configuracion_variantes
+        );
+
+        return {
+          ...formAsignarInicial,
+          id_sucursal: prev.id_sucursal || idSucursal,
+          id_producto: value,
+          precio_compra:
+            productoSeleccionado?.precio_compra !== null &&
+            productoSeleccionado?.precio_compra !== undefined
+              ? String(productoSeleccionado.precio_compra)
+              : '',
+          variantes:
+            usaVariantes && camposVariantes.length
+              ? [crearVarianteInventario(camposVariantes)]
+              : [],
+        };
+      }
+
+      return {
+        ...prev,
+        [name]: value,
+      };
     });
+  };
+
+  const agregarVarianteAsignacion = () => {
+    setFormAsignar((prev) => ({
+      ...prev,
+      variantes: [
+        ...(prev.variantes || []),
+        crearVarianteInventario(camposVariantesAsignacion),
+      ],
+    }));
+  };
+
+  const actualizarVarianteAsignacion = (idTemporal, campo, valor) => {
+    setFormAsignar((prev) => ({
+      ...prev,
+      variantes: (prev.variantes || []).map((variante) =>
+        variante.id_temporal === idTemporal
+          ? { ...variante, [campo]: valor }
+          : variante
+      ),
+    }));
+  };
+
+  const actualizarAtributoVarianteAsignacion = (
+    idTemporal,
+    clave,
+    valor
+  ) => {
+    setFormAsignar((prev) => ({
+      ...prev,
+      variantes: (prev.variantes || []).map((variante) =>
+        variante.id_temporal === idTemporal
+          ? {
+              ...variante,
+              atributos: {
+                ...(variante.atributos || {}),
+                [clave]: valor,
+              },
+            }
+          : variante
+      ),
+    }));
+  };
+
+  const eliminarVarianteAsignacion = (idTemporal) => {
+    setFormAsignar((prev) => ({
+      ...prev,
+      variantes: (prev.variantes || []).filter(
+        (variante) => variante.id_temporal !== idTemporal
+      ),
+    }));
   };
 
   const handleMovimientoChange = (e) => {
@@ -1189,9 +1545,18 @@ export default function Inventario() {
       };
 
       if (name === 'id_producto') {
+        cambios.id_variante = '';
         cambios.id_lote = '';
         cambios.id_proveedor = '';
         cambios.cantidad = '';
+        cambios.lote = '';
+        cambios.fecha_caducidad = '';
+        cambios.precio_compra = '';
+      }
+
+      if (name === 'id_variante') {
+        cambios.id_lote = '';
+        cambios.id_proveedor = '';
         cambios.lote = '';
         cambios.fecha_caducidad = '';
         cambios.precio_compra = '';
@@ -1212,6 +1577,8 @@ export default function Inventario() {
         );
 
         if (loteSeleccionado) {
+          cambios.id_variante =
+            loteSeleccionado.id_variante || cambios.id_variante || '';
           cambios.id_proveedor = loteSeleccionado.id_proveedor || '';
           cambios.lote = loteSeleccionado.lote || '';
           cambios.fecha_caducidad = loteSeleccionado.fecha_caducidad
@@ -1246,14 +1613,138 @@ export default function Inventario() {
       return;
     }
 
+    let stockInicial = 0;
+    let variantesPayload = [];
+
+    if (asignacionUsaVariantes) {
+      if (!camposVariantesAsignacion.length) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Configuración incompleta',
+          text: 'El producto usa variantes, pero no tiene tipos de variante configurados.',
+        });
+        return;
+      }
+
+      if (!formAsignar.variantes?.length) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Agrega una variante',
+          text: 'Este producto está configurado para manejar variantes.',
+        });
+        return;
+      }
+
+      const variantesInvalidas = formAsignar.variantes.filter((variante) => {
+        const atributosCompletos = camposVariantesAsignacion.every((campo) =>
+          Boolean(String(variante.atributos?.[campo.clave] || '').trim())
+        );
+
+        const cantidad = Number(variante.stock_inicial);
+
+        return (
+          !atributosCompletos ||
+          variante.stock_inicial === '' ||
+          !Number.isFinite(cantidad) ||
+          cantidad < 0
+        );
+      });
+
+      if (variantesInvalidas.length > 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Revisa las variantes',
+          text: 'Completa todos los atributos configurados y captura una cantidad válida en cada variante.',
+        });
+        return;
+      }
+
+      const clavesVariantes = formAsignar.variantes.map((variante) =>
+        normalizarTexto(
+          camposVariantesAsignacion
+            .map((campo) => variante.atributos?.[campo.clave])
+            .join('|')
+        )
+      );
+
+      const tieneDuplicadas =
+        new Set(clavesVariantes).size !== clavesVariantes.length;
+
+      if (tieneDuplicadas) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Variantes duplicadas',
+          text: 'Hay dos filas con la misma combinación de atributos.',
+        });
+        return;
+      }
+
+      variantesPayload = formAsignar.variantes.map((variante) => {
+        const atributos = {};
+
+        camposVariantesAsignacion.forEach((campo) => {
+          atributos[campo.clave] =
+            String(variante.atributos?.[campo.clave] || '').trim();
+        });
+
+        return {
+          nombre_variante: obtenerNombreVariante(
+            variante,
+            camposVariantesAsignacion
+          ),
+          sku: String(variante.sku || '').trim() || null,
+          codigo_barras: String(variante.codigo_barras || '').trim() || null,
+          stock_inicial: Number(variante.stock_inicial || 0),
+          talla: atributos.talla || null,
+          color: atributos.color || null,
+          tono: atributos.tono || null,
+          presentacion: atributos.presentacion || null,
+          atributos,
+        };
+      });
+
+      stockInicial = variantesPayload.reduce(
+        (total, variante) => total + Number(variante.stock_inicial || 0),
+        0
+      );
+    } else {
+      if (
+        formAsignar.stock_inicial === '' ||
+        Number(formAsignar.stock_inicial) < 0
+      ) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Stock inválido',
+          text: 'El stock inicial no puede ser negativo.',
+        });
+        return;
+      }
+
+      stockInicial = Number(formAsignar.stock_inicial || 0);
+    }
+
     if (
-      formAsignar.stock_inicial === '' ||
-      Number(formAsignar.stock_inicial) < 0
+      asignacionControlaLotes &&
+      stockInicial > 0 &&
+      !String(formAsignar.lote || '').trim()
     ) {
       Swal.fire({
         icon: 'warning',
-        title: 'Stock inválido',
-        text: 'El stock inicial no puede ser negativo.',
+        title: 'Lote obligatorio',
+        text: 'Este producto controla lotes. Captura el lote de entrada.',
+      });
+      return;
+    }
+
+    if (
+      asignacionControlaCaducidad &&
+      stockInicial > 0 &&
+      !formAsignar.fecha_caducidad
+    ) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Caducidad obligatoria',
+        text: 'Este producto controla caducidad. Captura la fecha de vencimiento.',
       });
       return;
     }
@@ -1267,15 +1758,19 @@ export default function Inventario() {
         id_proveedor: formAsignar.id_proveedor
           ? Number(formAsignar.id_proveedor)
           : null,
-        stock_inicial: Number(formAsignar.stock_inicial || 0),
+        stock_inicial: stockInicial,
         stock_minimo: Number(formAsignar.stock_minimo || 0),
         ubicacion: formAsignar.ubicacion || null,
-        lote: formAsignar.lote || null,
-        fecha_caducidad: formAsignar.fecha_caducidad || null,
+        lote: asignacionControlaLotes ? formAsignar.lote || null : null,
+        fecha_caducidad: asignacionControlaCaducidad
+          ? formAsignar.fecha_caducidad || null
+          : null,
         precio_compra: formAsignar.precio_compra
           ? Number(formAsignar.precio_compra)
           : 0,
         observaciones: formAsignar.observaciones || null,
+        usa_variantes: asignacionUsaVariantes,
+        variantes: asignacionUsaVariantes ? variantesPayload : [],
       };
 
       const { data } = await api.post('/inventario/asignar', payload);
@@ -1320,6 +1815,15 @@ export default function Inventario() {
       return;
     }
 
+    if (movimientoUsaVariantes && !formMovimiento.id_variante) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Variante obligatoria',
+        text: 'Selecciona la variante que recibirá o descontará este movimiento.',
+      });
+      return;
+    }
+
     if (
       formMovimiento.cantidad === '' ||
       Number(formMovimiento.cantidad) <= 0
@@ -1350,6 +1854,9 @@ export default function Inventario() {
       const payload = {
         id_sucursal: Number(formMovimiento.id_sucursal),
         id_producto: Number(formMovimiento.id_producto),
+        id_variante: formMovimiento.id_variante
+          ? Number(formMovimiento.id_variante)
+          : null,
         id_proveedor: formMovimiento.id_proveedor
           ? Number(formMovimiento.id_proveedor)
           : null,
@@ -2484,7 +2991,7 @@ export default function Inventario() {
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-3">
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-5">
         <div className="rounded-3xl border border-[#F0E2E7] bg-white p-4 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#FFF0F4] text-[#B85F7D]">
@@ -2492,9 +2999,49 @@ export default function Inventario() {
             </div>
             <div className="min-w-0">
               <p className="text-xs font-bold text-[#8B7A80]">Productos</p>
-              <p className="text-2xl font-black text-[#392F33]">
-                {resumen.totalProductos}
+              <p className="text-2xl font-black text-[#392F33]">{resumen.totalProductos}</p>
+              <p className="mt-0.5 text-[10px] font-semibold text-[#A28D95]">
+                {resumen.productosConVariantes} con variantes
               </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-[#F0E2E7] bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#F2EEF8] text-[#7E67A0]">
+              <Boxes size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-[#8B7A80]">Unidades</p>
+              <p className="text-2xl font-black text-[#392F33]">{formatoNumero(resumen.totalUnidades)}</p>
+              <p className="mt-0.5 text-[10px] font-semibold text-[#A28D95]">Stock total</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-[#F0E2E7] bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#FFF6E9] text-[#B97842]">
+              <CalendarClock size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-[#8B7A80]">Lotes</p>
+              <p className="text-2xl font-black text-[#392F33]">{resumen.totalLotes}</p>
+              <p className="mt-0.5 text-[10px] font-semibold text-[#A28D95]">Registrados</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-[#F0E2E7] bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+              <BadgeDollarSign size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-[#8B7A80]">Valor costo</p>
+              <p className="truncate text-lg font-black text-[#392F33]">{formatoMoneda(resumen.valorInventario)}</p>
+              <p className="mt-0.5 text-[10px] font-semibold text-[#A28D95]">Inventario actual</p>
             </div>
           </div>
         </div>
@@ -2502,7 +3049,7 @@ export default function Inventario() {
         <button
           type="button"
           onClick={abrirBajoStock}
-          className="rounded-3xl border border-amber-200 bg-amber-50/70 p-4 text-left shadow-sm transition hover:bg-amber-50"
+          className="col-span-2 rounded-3xl border border-amber-200 bg-amber-50/70 p-4 text-left shadow-sm transition hover:bg-amber-50 xl:col-span-1"
         >
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
@@ -2510,9 +3057,8 @@ export default function Inventario() {
             </div>
             <div className="min-w-0">
               <p className="text-xs font-bold text-amber-700">Bajo stock</p>
-              <p className="text-2xl font-black text-[#392F33]">
-                {resumen.productosBajoStock}
-              </p>
+              <p className="text-2xl font-black text-[#392F33]">{resumen.productosBajoStock}</p>
+              <p className="mt-0.5 text-[10px] font-semibold text-amber-700/70">Requieren atención</p>
             </div>
           </div>
         </button>
@@ -2559,6 +3105,23 @@ export default function Inventario() {
                         .filter(Boolean)
                         .join(' · ') || 'Sin datos adicionales'}
                     </p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {esVerdadero(item.usa_variantes) && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[#F2EEF8] px-2.5 py-1 text-[10px] font-black text-[#745D8A]">
+                          <Layers3 size={11} /> Variantes
+                        </span>
+                      )}
+                      {(esVerdadero(item.controla_lotes) || Number(item.total_lotes || 0) > 0) && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[#FFF6E9] px-2.5 py-1 text-[10px] font-black text-[#A9673D]">
+                          <Boxes size={11} /> {Number(item.total_lotes || 0)} lote(s)
+                        </span>
+                      )}
+                      {item.codigo_barras && (
+                        <span className="rounded-full bg-[#FFF9FA] px-2.5 py-1 text-[10px] font-black text-[#806B73]">
+                          {item.codigo_barras}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="shrink-0 rounded-2xl bg-[#FFF0F4] px-3 py-2 text-right">
@@ -2571,26 +3134,26 @@ export default function Inventario() {
                   </div>
                 </div>
 
-                <div className="mt-4 flex items-end justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-bold uppercase text-[#A08790]">
-                      Precio
-                    </p>
-                    <p className="text-lg font-black text-[#392F33]">
-                      {formatoMoneda(item.precio_venta)}
-                    </p>
-                    <p className="mt-1 truncate text-xs font-semibold text-[#9A858D]">
-                      {item.ubicacion ? `Ubicación: ${item.ubicacion}` : item.codigo_barras || 'Sin ubicación'}
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <div className="rounded-2xl bg-[#FFFAFB] p-3">
+                    <p className="text-[10px] font-black uppercase text-[#A08790]">Compra / Venta</p>
+                    <p className="mt-1 text-xs font-bold text-[#755F67]">{formatoMoneda(item.precio_compra)}</p>
+                    <p className="text-base font-black text-[#B85F7D]">{formatoMoneda(item.precio_venta)}</p>
+                  </div>
+                  <div className="rounded-2xl bg-[#FFFAFB] p-3">
+                    <p className="text-[10px] font-black uppercase text-[#A08790]">Mínimo / Ubicación</p>
+                    <p className="mt-1 text-sm font-black text-[#392F33]">Mín. {formatoNumero(item.stock_minimo)}</p>
+                    <p className="mt-0.5 truncate text-xs font-semibold text-[#8B7A80]">
+                      {item.ubicacion || 'Sin ubicación'}
                     </p>
                   </div>
-
-                  {item.bajo_stock && (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black text-amber-800">
-                      <AlertTriangle size={12} />
-                      Bajo stock
-                    </span>
-                  )}
                 </div>
+
+                {item.bajo_stock && (
+                  <div className="mt-3 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black text-amber-800">
+                    <AlertTriangle size={12} /> Bajo stock
+                  </div>
+                )}
 
                 {item.proxima_caducidad && item.caducidad_proxima && (
                   <div className="mt-3 rounded-2xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">
@@ -2599,24 +3162,32 @@ export default function Inventario() {
                   </div>
                 )}
 
-                <div className={`mt-4 grid gap-2 ${puedeGestionarInventario ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                <div className="mt-4 grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => abrirMovimiento(item, 'ENTRADA')}
                     className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B85F7D] px-4 py-3 text-sm font-black text-white transition hover:bg-[#A95270]"
                   >
-                    <ArrowDownCircle size={18} />
-                    Entrada
+                    <ArrowDownCircle size={18} /> Entrada
                   </button>
+
+                  {(esVerdadero(item.controla_lotes) || Number(item.total_lotes || 0) > 0) && (
+                    <button
+                      type="button"
+                      onClick={() => abrirLotes(item)}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#F0DFC8] bg-[#FFF8EE] px-4 py-3 text-sm font-black text-[#9A623C] transition hover:bg-[#FFF1DE]"
+                    >
+                      <Boxes size={18} /> Lotes
+                    </button>
+                  )}
 
                   {puedeGestionarInventario && (
                     <button
                       type="button"
                       onClick={() => setProductoAcciones(item)}
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#EEDFE4] bg-[#FFF9FA] px-4 py-3 text-sm font-black text-[#755F67] transition hover:bg-[#FFF0F4] hover:text-[#B85F7D]"
+                      className="col-span-2 inline-flex items-center justify-center gap-2 rounded-2xl border border-[#EEDFE4] bg-[#FFF9FA] px-4 py-3 text-sm font-black text-[#755F67] transition hover:bg-[#FFF0F4] hover:text-[#B85F7D]"
                     >
-                      <MoreHorizontal size={18} />
-                      Más
+                      <MoreHorizontal size={18} /> Más acciones
                     </button>
                   )}
                 </div>
@@ -2636,13 +3207,13 @@ export default function Inventario() {
                   Código
                 </th>
                 <th className="px-5 py-4 text-left text-xs font-bold text-[#8B7A80] uppercase">
-                  Categoría
+                  Detalle
                 </th>
                 <th className="px-5 py-4 text-left text-xs font-bold text-[#8B7A80] uppercase">
-                  Ubicación
+                  Control / Lotes
                 </th>
                 <th className="px-5 py-4 text-left text-xs font-bold text-[#8B7A80] uppercase">
-                  Próxima caducidad
+                  Ubicación / Caducidad
                 </th>
                 <th className="px-5 py-4 text-right text-xs font-bold text-[#8B7A80] uppercase">
                   Stock
@@ -2651,7 +3222,7 @@ export default function Inventario() {
                   Mínimo
                 </th>
                 <th className="px-5 py-4 text-right text-xs font-bold text-[#8B7A80] uppercase">
-                  Precio venta
+                  Compra / Venta
                 </th>
                 <th className="px-5 py-4 text-center text-xs font-bold text-[#8B7A80] uppercase">
                   Estado
@@ -2702,28 +3273,48 @@ export default function Inventario() {
                     </td>
 
                     <td className="px-5 py-4 text-sm text-[#755F67]">
-                      {item.categoria || 'Sin categoría'}
+                      <p className="font-bold text-[#5B4950]">{item.categoria || 'Sin categoría'}</p>
+                      <p className="mt-1 text-xs text-[#9A858D]">{item.marca || 'Sin marca'} · {item.presentacion || 'Sin presentación'}</p>
                     </td>
 
-                    <td className="px-5 py-4 text-sm text-[#755F67]">
-                      {item.ubicacion || '—'}
+                    <td className="px-5 py-4">
+                      <div className="flex max-w-[210px] flex-wrap gap-1.5">
+                        {esVerdadero(item.usa_variantes) && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[#F2EEF8] px-2.5 py-1 text-[10px] font-black text-[#745D8A]">
+                            <Layers3 size={11} /> Variantes
+                          </span>
+                        )}
+                        {(esVerdadero(item.controla_lotes) || Number(item.total_lotes || 0) > 0) && (
+                          <button
+                            type="button"
+                            onClick={() => abrirLotes(item)}
+                            className="inline-flex items-center gap-1 rounded-full bg-[#FFF6E9] px-2.5 py-1 text-[10px] font-black text-[#A9673D] transition hover:bg-[#FFECCE]"
+                            title="Ver y editar lotes"
+                          >
+                            <Boxes size={11} /> {Number(item.total_lotes || 0)} lote(s)
+                          </button>
+                        )}
+                        {esVerdadero(item.controla_caducidad) && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-[10px] font-black text-red-700">
+                            <CalendarClock size={11} /> Caducidad
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     <td className="px-5 py-4 text-sm">
-                      {item.proxima_caducidad ? (
-                        <span
-                          className={`font-bold ${item.caducidad_proxima
-                            ? 'text-red-700'
-                            : 'text-[#5B4950]'
-                            }`}
-                        >
-                          {new Date(item.proxima_caducidad).toLocaleDateString(
-                            'es-MX'
-                          )}
-                        </span>
-                      ) : (
-                        <span className="text-[#B09CA3]">—</span>
-                      )}
+                      <p className="inline-flex items-center gap-1 font-semibold text-[#755F67]">
+                        <MapPin size={13} /> {item.ubicacion || 'Sin ubicación'}
+                      </p>
+                      <p className="mt-1 text-xs">
+                        {item.proxima_caducidad ? (
+                          <span className={`font-bold ${item.caducidad_proxima ? 'text-red-700' : 'text-[#8B7A80]'}`}>
+                            Cad.: {new Date(item.proxima_caducidad).toLocaleDateString('es-MX')}
+                          </span>
+                        ) : (
+                          <span className="text-[#B09CA3]">Sin caducidad próxima</span>
+                        )}
+                      </p>
                     </td>
 
                     <td className="px-5 py-4 text-right">
@@ -2736,8 +3327,9 @@ export default function Inventario() {
                       {formatoNumero(item.stock_minimo)}
                     </td>
 
-                    <td className="px-5 py-4 text-right font-bold text-[#B85F7D]">
-                      {formatoMoneda(item.precio_venta)}
+                    <td className="px-5 py-4 text-right">
+                      <p className="text-xs font-semibold text-[#8B7A80]">{formatoMoneda(item.precio_compra)}</p>
+                      <p className="mt-0.5 font-black text-[#B85F7D]">{formatoMoneda(item.precio_venta)}</p>
                     </td>
 
                     <td className="px-5 py-4 text-center">
@@ -2763,6 +3355,17 @@ export default function Inventario() {
                           <ArrowDownCircle size={17} />
                           Entrada
                         </button>
+
+                        {(esVerdadero(item.controla_lotes) || Number(item.total_lotes || 0) > 0) && (
+                          <button
+                            type="button"
+                            onClick={() => abrirLotes(item)}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#FFF8EE] px-3 py-2 text-xs font-black text-[#9A623C] transition hover:bg-[#FFF1DE]"
+                            title="Ver y editar lotes"
+                          >
+                            <Eye size={16} /> Lotes
+                          </button>
+                        )}
 
                         {puedeGestionarInventario && (
                           <button
@@ -2866,10 +3469,14 @@ export default function Inventario() {
             onClick={cerrarModalAsignar}
           />
 
-          <div className="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden my-auto">
+          <div className="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden my-auto">
             <div className="px-4 sm:px-6 py-5 border-b border-[#F0E2E7] flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <h2 className="text-lg sm:text-xl font-bold text-[#392F33]">
+                <div className="inline-flex items-center gap-2 rounded-full bg-[#FFF2F5] px-3 py-1 text-[10px] font-black uppercase tracking-[0.13em] text-[#B85F7D]">
+                  <Boxes size={13} />
+                  Inventario inicial
+                </div>
+                <h2 className="mt-2 text-lg sm:text-xl font-bold text-[#392F33]">
                   Asignar stock inicial
                 </h2>
                 <p className="text-sm text-[#8B7A80] break-words">
@@ -2878,6 +3485,7 @@ export default function Inventario() {
               </div>
 
               <button
+                type="button"
                 onClick={cerrarModalAsignar}
                 className="w-10 h-10 rounded-2xl bg-[#FFF9FA] hover:bg-[#F7EEF1] flex items-center justify-center shrink-0"
               >
@@ -2886,7 +3494,7 @@ export default function Inventario() {
             </div>
 
             <form onSubmit={asignarInventario}>
-              <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-5 max-h-[70vh] overflow-y-auto">
+              <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-5 max-h-[72vh] overflow-y-auto">
                 <div className="md:col-span-2 min-w-0">
                   <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Producto *
@@ -2906,9 +3514,15 @@ export default function Inventario() {
                         producto.codigo_barras || 'Sin código',
                         producto.marca,
                         producto.presentacion,
+                        producto.categoria,
                       ]
                         .filter(Boolean)
                         .join(' · ')
+                    }
+                    getRightText={(producto) =>
+                      esVerdadero(producto.usa_variantes)
+                        ? 'Con variantes'
+                        : 'Simple'
                     }
                   />
 
@@ -2919,6 +3533,252 @@ export default function Inventario() {
                     </p>
                   )}
                 </div>
+
+                {productoAsignacionSeleccionado && (
+                  <div className="md:col-span-2 rounded-2xl border border-[#F0E2E7] bg-[#FFFAFB] p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="font-black text-[#49383F] truncate">
+                          {productoAsignacionSeleccionado.nombre}
+                        </p>
+                        <p className="mt-1 text-xs text-[#927B84]">
+                          {[productoAsignacionSeleccionado.categoria, productoAsignacionSeleccionado.marca, productoAsignacionSeleccionado.presentacion]
+                            .filter(Boolean)
+                            .join(' · ') || 'Sin información adicional'}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${
+                          asignacionUsaVariantes
+                            ? 'bg-[#F0EBF6] text-[#745D8A]'
+                            : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {asignacionUsaVariantes ? 'Variantes' : 'Simple'}
+                        </span>
+
+                        {asignacionControlaLotes && (
+                          <span className="rounded-full bg-[#FFF3E9] px-3 py-1 text-[10px] font-black uppercase tracking-wide text-[#A9673D]">
+                            Lotes
+                          </span>
+                        )}
+
+                        {asignacionControlaCaducidad && (
+                          <span className="rounded-full bg-[#FFF0F0] px-3 py-1 text-[10px] font-black uppercase tracking-wide text-[#B65F66]">
+                            Caducidad
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {inventarioAsignacionExistente && asignacionUsaVariantes && (
+                      <div className="mt-3 rounded-xl border border-[#E8DCE1] bg-white px-3 py-2 text-xs font-semibold text-[#7E6770]">
+                        Este producto ya existe en la sucursal con{' '}
+                        <span className="font-black text-[#A84E6C]">
+                          {formatoNumero(inventarioAsignacionExistente.stock_actual)}
+                        </span>{' '}
+                        unidad(es). Las variantes que captures se agregarán al inventario actual.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {asignacionUsaVariantes && (
+                  <div className="md:col-span-2 rounded-[1.5rem] border border-[#E8DCE1] bg-white overflow-hidden">
+                    <div className="flex flex-col gap-3 border-b border-[#F0E2E7] bg-[#FFFAFB] px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h3 className="font-black text-[#49383F]">
+                          Variantes del producto
+                        </h3>
+                        <p className="mt-1 text-xs leading-relaxed text-[#927B84]">
+                          El formulario usa exactamente los atributos que configuraste en el producto.
+                        </p>
+
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {camposVariantesAsignacion.map((campo) => (
+                            <span
+                              key={campo.clave}
+                              className="rounded-full bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#8E596B] ring-1 ring-[#EEDFE4]"
+                            >
+                              {campo.etiqueta}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={agregarVarianteAsignacion}
+                        className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#FBEAF0] px-4 py-2.5 text-sm font-black text-[#A84E6C] transition hover:bg-[#F6DCE5]"
+                      >
+                        <Plus size={17} />
+                        Agregar variante
+                      </button>
+                    </div>
+
+                    <div className="p-4 space-y-4">
+                      {(formAsignar.variantes || []).length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-[#DCCBD1] bg-[#FFFDFD] px-4 py-8 text-center">
+                          <p className="font-bold text-[#67545B]">
+                            Aún no hay variantes capturadas.
+                          </p>
+                          <p className="mt-1 text-xs text-[#927B84]">
+                            Agrega por lo menos una variante para continuar.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={agregarVarianteAsignacion}
+                            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#B85F7D] px-4 py-2.5 text-sm font-black text-white"
+                          >
+                            <Plus size={16} />
+                            Agregar variante
+                          </button>
+                        </div>
+                      ) : (
+                        formAsignar.variantes.map((variante, indice) => (
+                          <div
+                            key={variante.id_temporal}
+                            className="rounded-2xl border border-[#F0E2E7] bg-[#FFFCFD] p-4"
+                          >
+                            <div className="mb-4 flex items-center justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-black text-[#49383F]">
+                                  Variante {indice + 1}
+                                </p>
+                                <p className="mt-0.5 text-xs text-[#927B84]">
+                                  {obtenerNombreVariante(variante, camposVariantesAsignacion)}
+                                </p>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  eliminarVarianteAsignacion(variante.id_temporal)
+                                }
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600 transition hover:bg-red-100"
+                                title="Eliminar variante"
+                              >
+                                <X size={16} />
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                              {camposVariantesAsignacion.map((campo) => (
+                                <div key={`${variante.id_temporal}-${campo.clave}`}>
+                                  <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
+                                    {campo.etiqueta} *
+                                  </label>
+
+                                  {campo.tipo === 'select' ? (
+                                    <select
+                                      value={variante.atributos?.[campo.clave] || ''}
+                                      onChange={(e) =>
+                                        actualizarAtributoVarianteAsignacion(
+                                          variante.id_temporal,
+                                          campo.clave,
+                                          e.target.value
+                                        )
+                                      }
+                                      className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
+                                    >
+                                      <option value="">Selecciona...</option>
+                                      {(campo.opciones || []).map((opcion) => (
+                                        <option key={opcion} value={opcion}>
+                                          {opcion}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <input
+                                      value={variante.atributos?.[campo.clave] || ''}
+                                      onChange={(e) =>
+                                        actualizarAtributoVarianteAsignacion(
+                                          variante.id_temporal,
+                                          campo.clave,
+                                          e.target.value
+                                        )
+                                      }
+                                      className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
+                                      placeholder={campo.placeholder || campo.etiqueta}
+                                    />
+                                  )}
+                                </div>
+                              ))}
+
+                              <div>
+                                <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
+                                  Nombre alternativo
+                                </label>
+                                <input
+                                  value={variante.nombre_variante}
+                                  onChange={(e) =>
+                                    actualizarVarianteAsignacion(
+                                      variante.id_temporal,
+                                      'nombre_variante',
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
+                                  placeholder="Opcional; se genera automáticamente"
+                                />
+                              </div>
+
+                            
+
+                              <div>
+                                <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
+                                  Código de barras
+                                </label>
+                                <input
+                                  value={variante.codigo_barras}
+                                  onChange={(e) =>
+                                    actualizarVarianteAsignacion(
+                                      variante.id_temporal,
+                                      'codigo_barras',
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
+                                  placeholder="Opcional"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
+                                  Cantidad inicial *
+                                </label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={variante.stock_inicial}
+                                  onChange={(e) =>
+                                    actualizarVarianteAsignacion(
+                                      variante.id_temporal,
+                                      'stock_inicial',
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm font-black text-[#49383F] outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
+                                  placeholder="0"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-2 border-t border-[#F0E2E7] bg-[#FFFAFB] px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-xs font-semibold text-[#927B84]">
+                        El stock general del producto será la suma de todas las variantes.
+                      </p>
+                      <div className="rounded-full bg-[#FBEAF0] px-4 py-2 text-sm font-black text-[#A84E6C]">
+                        Total inicial: {formatoNumero(stockInicialVariantes)}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-bold text-[#5B4950] mb-2">
@@ -2942,20 +3802,34 @@ export default function Inventario() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
-                    Stock inicial *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="stock_inicial"
-                    value={formAsignar.stock_inicial}
-                    onChange={handleAsignarChange}
-                    className="w-full px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2]"
-                    placeholder="0"
-                  />
-                </div>
+                {!asignacionUsaVariantes && (
+                  <div>
+                    <label className="block text-sm font-bold text-[#5B4950] mb-2">
+                      Stock inicial *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      name="stock_inicial"
+                      value={formAsignar.stock_inicial}
+                      onChange={handleAsignarChange}
+                      className="w-full px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2]"
+                      placeholder="0"
+                    />
+                  </div>
+                )}
+
+                {asignacionUsaVariantes && (
+                  <div>
+                    <label className="block text-sm font-bold text-[#5B4950] mb-2">
+                      Stock inicial total
+                    </label>
+                    <div className="w-full px-4 py-3 rounded-2xl border border-[#EEDFE4] bg-[#FFF9FA] font-black text-[#A84E6C]">
+                      {formatoNumero(stockInicialVariantes)}
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-bold text-[#5B4950] mb-2">
@@ -2963,6 +3837,7 @@ export default function Inventario() {
                   </label>
                   <input
                     type="number"
+                    min="0"
                     step="0.01"
                     name="stock_minimo"
                     value={formAsignar.stock_minimo}
@@ -2987,36 +3862,11 @@ export default function Inventario() {
 
                 <div>
                   <label className="block text-sm font-bold text-[#5B4950] mb-2">
-                    Lote
-                  </label>
-                  <input
-                    name="lote"
-                    value={formAsignar.lote}
-                    onChange={handleAsignarChange}
-                    className="w-full px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2]"
-                    placeholder="Ej. PAR-2026-A"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
-                    Fecha de caducidad
-                  </label>
-                  <input
-                    type="date"
-                    name="fecha_caducidad"
-                    value={formAsignar.fecha_caducidad}
-                    onChange={handleAsignarChange}
-                    className="w-full px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
-                    Precio compra lote
+                    Precio compra
                   </label>
                   <input
                     type="number"
+                    min="0"
                     step="0.01"
                     name="precio_compra"
                     value={formAsignar.precio_compra}
@@ -3025,6 +3875,36 @@ export default function Inventario() {
                     placeholder="0.00"
                   />
                 </div>
+
+                {asignacionControlaLotes && (
+                  <div>
+                    <label className="block text-sm font-bold text-[#5B4950] mb-2">
+                      Lote
+                    </label>
+                    <input
+                      name="lote"
+                      value={formAsignar.lote}
+                      onChange={handleAsignarChange}
+                      className="w-full px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2]"
+                      placeholder="Ej. PAR-2026-A"
+                    />
+                  </div>
+                )}
+
+                {asignacionControlaCaducidad && (
+                  <div>
+                    <label className="block text-sm font-bold text-[#5B4950] mb-2">
+                      Fecha de caducidad
+                    </label>
+                    <input
+                      type="date"
+                      name="fecha_caducidad"
+                      value={formAsignar.fecha_caducidad}
+                      onChange={handleAsignarChange}
+                      className="w-full px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2]"
+                    />
+                  </div>
+                )}
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-bold text-[#5B4950] mb-2">
@@ -3040,14 +3920,26 @@ export default function Inventario() {
                 </div>
               </div>
 
-              <div className="px-4 sm:px-6 py-5 flex justify-end border-t border-[#F0E2E7]">
+              <div className="px-4 sm:px-6 py-5 flex flex-col gap-3 border-t border-[#F0E2E7] sm:flex-row sm:items-center sm:justify-between">
+                {asignacionUsaVariantes ? (
+                  <p className="text-xs font-semibold text-[#8B7A80]">
+                    Se enviarán {formAsignar.variantes?.length || 0} variante(s) con un total de {formatoNumero(stockInicialVariantes)} pieza(s).
+                  </p>
+                ) : (
+                  <span />
+                )}
+
                 <button
                   type="submit"
                   disabled={guardando}
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-[#B85F7D] hover:bg-[#A95270] text-white font-bold transition disabled:opacity-60"
                 >
-                  <Save size={19} />
-                  {guardando ? 'Guardando...' : 'Guardar'}
+                  {guardando ? (
+                    <Loader2 size={19} className="animate-spin" />
+                  ) : (
+                    <Save size={19} />
+                  )}
+                  {guardando ? 'Guardando...' : 'Guardar inventario'}
                 </button>
               </div>
             </form>
@@ -3110,6 +4002,40 @@ export default function Inventario() {
                     getRightText={(item) => `Stock: ${formatoNumero(item.stock_actual)}`}
                   />
                 </div>
+
+                {movimientoUsaVariantes && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-bold text-[#5B4950] mb-2">
+                      Variante *
+                    </label>
+                    <select
+                      name="id_variante"
+                      value={formMovimiento.id_variante}
+                      onChange={handleMovimientoChange}
+                      className="w-full px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2] bg-white"
+                    >
+                      <option value="">Selecciona la variante...</option>
+                      {variantesMovimientoDisponibles.map((variante) => (
+                        <option
+                          key={variante.id_variante}
+                          value={variante.id_variante}
+                        >
+                          {obtenerEtiquetaVarianteGuardada(variante)} · Stock:{' '}
+                          {formatoNumero(variante.stock_actual)}
+                        </option>
+                      ))}
+                    </select>
+
+                    {varianteMovimientoSeleccionada && (
+                      <p className="mt-1 text-xs font-semibold text-[#8B7A80]">
+                        SKU: {varianteMovimientoSeleccionada.sku || '—'} · Código:{' '}
+                        {varianteMovimientoSeleccionada.codigo_barras || '—'} ·
+                        Stock de variante:{' '}
+                        {formatoNumero(varianteMovimientoSeleccionada.stock_actual)}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-bold text-[#5B4950] mb-2">
@@ -3177,9 +4103,19 @@ export default function Inventario() {
                             Number(l.id_producto) ===
                             Number(formMovimiento.id_producto)
                         )
+                        .filter(
+                          (l) =>
+                            !movimientoUsaVariantes ||
+                            !formMovimiento.id_variante ||
+                            Number(l.id_variante) ===
+                              Number(formMovimiento.id_variante)
+                        )
                         .filter((l) => Number(l.stock_actual) > 0)
                         .map((loteItem) => (
                           <option key={loteItem.id_lote} value={loteItem.id_lote}>
+                            {movimientoUsaVariantes && loteItem.id_variante
+                              ? `${obtenerEtiquetaVarianteGuardada(loteItem)} · `
+                              : ''}
                             {loteItem.lote} · Stock:{' '}
                             {formatoNumero(loteItem.stock_actual)} · Cad:{' '}
                             {loteItem.fecha_caducidad
@@ -3386,6 +4322,31 @@ export default function Inventario() {
             </div>
 
             <div className="p-4 sm:p-6 overflow-y-auto max-h-[75vh]">
+              {lotes.length > 0 && (
+                <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                  <div className="rounded-2xl border border-[#F0E2E7] bg-[#FFFAFB] p-4">
+                    <p className="text-[10px] font-black uppercase text-[#9A858D]">Lotes</p>
+                    <p className="mt-1 text-xl font-black text-[#392F33]">{lotes.length}</p>
+                  </div>
+                  <div className="rounded-2xl border border-[#F0E2E7] bg-[#FFFAFB] p-4">
+                    <p className="text-[10px] font-black uppercase text-[#9A858D]">Stock en lotes</p>
+                    <p className="mt-1 text-xl font-black text-[#392F33]">
+                      {formatoNumero(lotes.reduce((acc, item) => acc + Number(item.stock_actual || 0), 0))}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-[#F0E2E7] bg-[#FFFAFB] p-4">
+                    <p className="text-[10px] font-black uppercase text-[#9A858D]">Valor costo</p>
+                    <p className="mt-1 text-base font-black text-[#392F33]">
+                      {formatoMoneda(lotes.reduce((acc, item) => acc + Number(item.stock_actual || 0) * Number(item.precio_compra || 0), 0))}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-[#F0E2E7] bg-[#FFFAFB] p-4">
+                    <p className="text-[10px] font-black uppercase text-[#9A858D]">Ubicación</p>
+                    <p className="mt-1 truncate text-sm font-black text-[#392F33]">{productoLotes?.ubicacion || 'Sin ubicación'}</p>
+                  </div>
+                </div>
+              )}
+
               {lotes.length === 0 ? (
                 <div className="text-center py-10 text-[#8B7A80]">
                   No hay lotes registrados para este producto.
@@ -3395,6 +4356,9 @@ export default function Inventario() {
                   <table className="w-full min-w-[1350px]">
                     <thead className="bg-[#FFFAFB] border-b border-[#F0E2E7]">
                       <tr>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
+                          Variante
+                        </th>
                         <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Lote
                         </th>
@@ -3428,6 +4392,12 @@ export default function Inventario() {
                     <tbody className="divide-y divide-[#F4E8EB]">
                       {lotes.map((loteItem) => (
                         <tr key={loteItem.id_lote}>
+                          <td className="px-4 py-3 text-[#755F67]">
+                            {loteItem.id_variante
+                              ? obtenerEtiquetaVarianteGuardada(loteItem)
+                              : 'General'}
+                          </td>
+
                           <td className="px-4 py-3 font-bold text-[#392F33]">
                             {loteItem.lote}
                           </td>
@@ -3666,80 +4636,6 @@ export default function Inventario() {
                     <span className="font-bold text-[#5B4950]">
                       Compra relacionada:
                     </span>{' '}
-                    {loteEditando?.folio_compra || '—'}
-                  </p>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
-                    Lote *
-                  </label>
-                  <input
-                    name="lote"
-                    value={formEditarLote.lote}
-                    onChange={handleEditarLoteChange}
-                    className="w-full px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2]"
-                    placeholder="Ej. PAR-2026-A"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
-                    Fecha de caducidad
-                  </label>
-                  <input
-                    type="date"
-                    name="fecha_caducidad"
-                    value={formEditarLote.fecha_caducidad}
-                    onChange={handleEditarLoteChange}
-                    className="w-full px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
-                    Precio compra lote
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="precio_compra"
-                    value={formEditarLote.precio_compra}
-                    onChange={handleEditarLoteChange}
-                    className="w-full px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2]"
-                    placeholder="0.00"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
-                    Proveedor
-                  </label>
-                  <select
-                    name="id_proveedor"
-                    value={formEditarLote.id_proveedor}
-                    onChange={handleEditarLoteChange}
-                    className="w-full px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2] bg-white"
-                  >
-                    <option value="">Sin proveedor</option>
-                    {proveedores.map((proveedor) => (
-                      <option
-                        key={proveedor.id_proveedor}
-                        value={proveedor.id_proveedor}
-                      >
-                        {proveedor.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="md:col-span-2 rounded-2xl bg-[#FFFAFB] border border-[#F0E2E7] p-4 text-sm text-[#755F67]">
-                  <p>
-                    <span className="font-bold text-[#5B4950]">Stock actual:</span>{' '}
-                    {formatoNumero(loteEditando?.stock_actual)}
-                  </p>
-                  <p className="mt-1">
-                    <span className="font-bold text-[#5B4950]">Compra relacionada:</span>{' '}
                     {loteEditando?.folio_compra || '—'}
                   </p>
                 </div>

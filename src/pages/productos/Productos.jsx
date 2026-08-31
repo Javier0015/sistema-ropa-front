@@ -24,6 +24,74 @@ import {
 import api from '../../api/axios';
 import BarcodeScannerModal from '../../components/BarcodeScannerModal';
 
+const configuracionVariantesInicial = {
+  talla: false,
+  color: false,
+  tono: false,
+  genero: false,
+  presentacion: false,
+  material: false,
+  modelo: false,
+  aroma: false,
+  capacidad: false,
+  personalizados: [],
+};
+
+const tiposVariantesDisponibles = [
+  { clave: 'talla', titulo: 'Talla / medida', detalle: 'XS, S, M, L, 24, 25, 26...' },
+  { clave: 'color', titulo: 'Color', detalle: 'Negro, blanco, azul, rosa...' },
+  { clave: 'tono', titulo: 'Tono', detalle: 'Tonos de maquillaje o cosméticos' },
+  { clave: 'genero', titulo: 'Género / línea', detalle: 'Hombre, mujer, unisex, niño...' },
+  { clave: 'presentacion', titulo: 'Presentación', detalle: 'Pieza, set, frasco, paquete...' },
+  { clave: 'material', titulo: 'Material', detalle: 'Algodón, piel, mezclilla...' },
+  { clave: 'modelo', titulo: 'Modelo / estilo', detalle: 'Slim, clásico, deportivo...' },
+  { clave: 'aroma', titulo: 'Aroma / fragancia', detalle: 'Floral, cítrico, vainilla...' },
+  { clave: 'capacidad', titulo: 'Capacidad / volumen', detalle: '30 ml, 50 ml, 100 ml...' },
+];
+
+const normalizarConfiguracionVariantes = (valor) => {
+  let origen = valor;
+
+  if (typeof origen === 'string') {
+    try {
+      origen = JSON.parse(origen);
+    } catch {
+      origen = {};
+    }
+  }
+
+  if (!origen || typeof origen !== 'object' || Array.isArray(origen)) {
+    origen = {};
+  }
+
+  return {
+    ...configuracionVariantesInicial,
+    ...tiposVariantesDisponibles.reduce((acc, item) => {
+      acc[item.clave] = esVerdadero(origen[item.clave]);
+      return acc;
+    }, {}),
+    personalizados: Array.isArray(origen.personalizados)
+      ? origen.personalizados
+          .map((item) => ({
+            clave: String(item?.clave || '').trim(),
+            etiqueta: String(item?.etiqueta || '').trim(),
+          }))
+          .filter((item) => item.clave && item.etiqueta)
+      : [],
+  };
+};
+
+const crearClaveAtributo = (texto) => {
+  return String(texto || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 40);
+};
+
 const formInicial = {
   codigo_barras: '',
   nombre: '',
@@ -33,6 +101,7 @@ const formInicial = {
   precio_compra: '',
   precio_venta: '',
   usa_variantes: false,
+  configuracion_variantes: { ...configuracionVariantesInicial },
   controla_lotes: false,
   controla_caducidad: false,
   activo: true,
@@ -67,6 +136,7 @@ export default function Productos() {
 
   const [form, setForm] = useState(formInicial);
   const [escanerAbierto, setEscanerAbierto] = useState(false);
+  const [nuevoAtributoVariante, setNuevoAtributoVariante] = useState('');
 
   // =========================================================
   // CARGA DE DATOS
@@ -297,9 +367,13 @@ export default function Productos() {
   // =========================================================
 
   const abrirNuevo = () => {
-    setForm(formInicial);
+    setForm({
+      ...formInicial,
+      configuracion_variantes: { ...configuracionVariantesInicial },
+    });
     setBusquedaCategoria('');
     setMostrarCategorias(false);
+    setNuevoAtributoVariante('');
     setModoEdicion(false);
     setProductoEditando(null);
     setModalAbierto(true);
@@ -324,6 +398,9 @@ export default function Productos() {
         producto.precio_venta_base ??
         '',
       usa_variantes: esVerdadero(producto.usa_variantes),
+      configuracion_variantes: normalizarConfiguracionVariantes(
+        producto.configuracion_variantes
+      ),
       controla_lotes: esVerdadero(producto.controla_lotes),
       controla_caducidad: esVerdadero(producto.controla_caducidad),
       activo: esVerdadero(producto.activo),
@@ -338,7 +415,11 @@ export default function Productos() {
     setModalAbierto(false);
     setModoEdicion(false);
     setProductoEditando(null);
-    setForm(formInicial);
+    setForm({
+      ...formInicial,
+      configuracion_variantes: { ...configuracionVariantesInicial },
+    });
+    setNuevoAtributoVariante('');
     setBusquedaCategoria('');
     setMostrarCategorias(false);
     setEscanerAbierto(false);
@@ -368,8 +449,88 @@ export default function Productos() {
         siguiente.controla_caducidad = false;
       }
 
+      /*
+       * Al desactivar variantes limpiamos la configuración para evitar que
+       * queden atributos antiguos asociados al producto.
+       */
+      if (name === 'usa_variantes' && !checked) {
+        siguiente.configuracion_variantes = {
+          ...configuracionVariantesInicial,
+        };
+      }
+
       return siguiente;
     });
+  };
+
+  const alternarTipoVariante = (clave) => {
+    setForm((prev) => ({
+      ...prev,
+      configuracion_variantes: {
+        ...prev.configuracion_variantes,
+        [clave]: !prev.configuracion_variantes?.[clave],
+      },
+    }));
+  };
+
+  const agregarAtributoPersonalizado = () => {
+    const etiqueta = String(nuevoAtributoVariante || '').trim();
+    const clave = crearClaveAtributo(etiqueta);
+
+    if (!etiqueta || !clave) return;
+
+    const clavesReservadas = new Set(
+      tiposVariantesDisponibles.map((item) => item.clave)
+    );
+
+    if (clavesReservadas.has(clave)) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Atributo disponible',
+        text: 'Ese atributo ya existe entre las opciones predeterminadas.',
+        confirmButtonColor: '#B85F7D',
+      });
+      return;
+    }
+
+    const yaExiste = (form.configuracion_variantes?.personalizados || []).some(
+      (item) => item.clave === clave
+    );
+
+    if (yaExiste) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Atributo repetido',
+        text: 'Ese atributo personalizado ya fue agregado.',
+        confirmButtonColor: '#B85F7D',
+      });
+      return;
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      configuracion_variantes: {
+        ...prev.configuracion_variantes,
+        personalizados: [
+          ...(prev.configuracion_variantes?.personalizados || []),
+          { clave, etiqueta },
+        ],
+      },
+    }));
+
+    setNuevoAtributoVariante('');
+  };
+
+  const eliminarAtributoPersonalizado = (clave) => {
+    setForm((prev) => ({
+      ...prev,
+      configuracion_variantes: {
+        ...prev.configuracion_variantes,
+        personalizados: (
+          prev.configuracion_variantes?.personalizados || []
+        ).filter((item) => item.clave !== clave),
+      },
+    }));
   };
 
   const validarForm = () => {
@@ -406,6 +567,24 @@ export default function Productos() {
       return false;
     }
 
+    if (form.usa_variantes) {
+      const tieneTipoPredeterminado = tiposVariantesDisponibles.some(
+        (item) => Boolean(form.configuracion_variantes?.[item.clave])
+      );
+      const tienePersonalizados =
+        (form.configuracion_variantes?.personalizados || []).length > 0;
+
+      if (!tieneTipoPredeterminado && !tienePersonalizados) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Configura las variantes',
+          text: 'Selecciona al menos un tipo de variante, por ejemplo talla, color o presentación.',
+          confirmButtonColor: '#B85F7D',
+        });
+        return false;
+      }
+    }
+
     return true;
   };
 
@@ -432,6 +611,9 @@ export default function Productos() {
         precio_venta: Number(form.precio_venta),
 
         usa_variantes: Boolean(form.usa_variantes),
+        configuracion_variantes: form.usa_variantes
+          ? normalizarConfiguracionVariantes(form.configuracion_variantes)
+          : { ...configuracionVariantesInicial },
         controla_lotes: Boolean(form.controla_lotes),
         controla_caducidad: Boolean(form.controla_caducidad),
         activo: Boolean(form.activo),
@@ -582,6 +764,24 @@ export default function Productos() {
 
     setBusquedaCategoria(cat ? cat.nombre : '');
     setMostrarCategorias(false);
+  };
+
+  const obtenerTiposVariantesProducto = (producto) => {
+    if (!esVerdadero(producto?.usa_variantes)) return [];
+
+    const config = normalizarConfiguracionVariantes(
+      producto?.configuracion_variantes
+    );
+
+    const etiquetas = tiposVariantesDisponibles
+      .filter((item) => config[item.clave])
+      .map((item) => item.titulo);
+
+    const personalizados = (config.personalizados || []).map(
+      (item) => item.etiqueta
+    );
+
+    return [...etiquetas, ...personalizados];
   };
 
   const manejarCodigoDetectado = (codigo) => {
@@ -990,11 +1190,19 @@ export default function Productos() {
                     <td className="px-5 py-4">
                       <div className="flex max-w-[270px] flex-wrap gap-1.5">
                         {esVerdadero(producto.usa_variantes) && (
-                          <BadgeRetail
-                            icono={Layers3}
-                            texto="Variantes"
-                            clase="bg-[#F0EBF6] text-[#745D8A]"
-                          />
+                          <div className="space-y-1.5">
+                            <BadgeRetail
+                              icono={Layers3}
+                              texto="Variantes"
+                              clase="bg-[#F0EBF6] text-[#745D8A]"
+                            />
+
+                            {obtenerTiposVariantesProducto(producto).length > 0 && (
+                              <p className="max-w-[230px] text-[10px] font-semibold leading-relaxed text-[#9B858D]">
+                                {obtenerTiposVariantesProducto(producto).join(' · ')}
+                              </p>
+                            )}
+                          </div>
                         )}
 
                         {esVerdadero(producto.controla_lotes) && (
@@ -1327,54 +1535,184 @@ export default function Productos() {
                         </h3>
 
                         <p className="mt-1 text-xs leading-relaxed text-[#927B84]">
-                          Define cómo se administrará este artículo dentro del inventario.
+                          Define sus variantes y la trazabilidad que necesitará al manejar existencias.
                         </p>
                       </div>
                     </div>
 
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                      <OpcionControl
-                        name="usa_variantes"
-                        checked={form.usa_variantes}
-                        onChange={handleChange}
-                        icono={Layers3}
-                        titulo="Usa variantes"
-                        detalle="Tallas, colores, tonos..."
-                      />
+                    {/* TIPO DE INVENTARIO */}
+                    <div className="mt-5">
+                      <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#A18891]">
+                        Estructura del inventario
+                      </p>
 
-                      <OpcionControl
-                        name="controla_lotes"
-                        checked={form.controla_lotes}
-                        onChange={handleChange}
-                        icono={Boxes}
-                        titulo="Controla lotes"
-                        detalle="Entrada y stock por lote"
-                      />
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <OpcionControl
+                          name="usa_variantes"
+                          checked={form.usa_variantes}
+                          onChange={handleChange}
+                          icono={Layers3}
+                          titulo="Producto con variantes"
+                          detalle="Cada combinación tendrá su propio SKU, código y stock."
+                        />
 
-                      <OpcionControl
-                        name="controla_caducidad"
-                        checked={form.controla_caducidad}
-                        onChange={handleChange}
-                        icono={CalendarClock}
-                        titulo="Caducidad"
-                        detalle="Vencimiento por lote"
-                      />
+                        <OpcionControl
+                          name="controla_lotes"
+                          checked={form.controla_lotes}
+                          onChange={handleChange}
+                          icono={Boxes}
+                          titulo="Control por lotes"
+                          detalle="Identifica entradas, existencias y movimientos por lote."
+                        />
 
-                      {modoEdicion && (
+                        <OpcionControl
+                          name="controla_caducidad"
+                          checked={form.controla_caducidad}
+                          onChange={handleChange}
+                          icono={CalendarClock}
+                          titulo="Control de caducidad"
+                          detalle="Registra vencimiento y alertas para cada lote."
+                        />
+                      </div>
+                    </div>
+
+                    {/* DIMENSIONES DE VARIANTES */}
+                    {form.usa_variantes && (
+                      <div className="mt-5 rounded-[1.25rem] border border-[#E9DCE1] bg-white p-4">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-sm font-black text-[#513F46]">
+                              ¿Qué cambia entre una variante y otra?
+                            </p>
+                            <p className="mt-1 text-xs font-semibold leading-relaxed text-[#9A838C]">
+                              Selecciona todos los atributos que aplican. Después, al agregar inventario, solo se pedirán estos campos.
+                            </p>
+                          </div>
+
+                          <span className="w-fit rounded-full bg-[#FFF1F5] px-3 py-1 text-[10px] font-black uppercase tracking-wide text-[#A84E6C]">
+                            Configuración dinámica
+                          </span>
+                        </div>
+
+                        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {tiposVariantesDisponibles.map((tipo) => {
+                            const activo = Boolean(
+                              form.configuracion_variantes?.[tipo.clave]
+                            );
+
+                            return (
+                              <button
+                                key={tipo.clave}
+                                type="button"
+                                onClick={() => alternarTipoVariante(tipo.clave)}
+                                className={`flex items-start gap-3 rounded-2xl border p-3 text-left transition ${
+                                  activo
+                                    ? 'border-[#E7BAC8] bg-[#FFF1F5]'
+                                    : 'border-[#EEE2E6] bg-[#FFFCFD] hover:border-[#E6C7D1]'
+                                }`}
+                              >
+                                <span
+                                  className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
+                                    activo
+                                      ? 'bg-[#B85F7D] text-white'
+                                      : 'bg-[#F8EDF1] text-[#A1848E]'
+                                  }`}
+                                >
+                                  <Tags size={15} />
+                                </span>
+
+                                <span className="min-w-0">
+                                  <span
+                                    className={`block text-xs font-black ${
+                                      activo ? 'text-[#A84E6C]' : 'text-[#5D4A51]'
+                                    }`}
+                                  >
+                                    {tipo.titulo}
+                                  </span>
+                                  <span className="mt-1 block text-[10px] font-semibold leading-relaxed text-[#9B858D]">
+                                    {tipo.detalle}
+                                  </span>
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="mt-4 rounded-2xl bg-[#FFFAFB] p-3.5">
+                          <p className="text-xs font-black text-[#5D4A51]">
+                            Otro atributo
+                          </p>
+                          <p className="mt-1 text-[10px] font-semibold text-[#9B858D]">
+                            Para características especiales como acabado, colección, compatibilidad o cualquier otro dato.
+                          </p>
+
+                          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                            <input
+                              type="text"
+                              value={nuevoAtributoVariante}
+                              onChange={(e) => setNuevoAtributoVariante(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  agregarAtributoPersonalizado();
+                                }
+                              }}
+                              className={`${inputClass} flex-1`}
+                              placeholder="Ej. Acabado, colección, compatibilidad..."
+                            />
+                            <button
+                              type="button"
+                              onClick={agregarAtributoPersonalizado}
+                              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#F5E6EB] px-4 py-3 text-xs font-black text-[#9E536B] transition hover:bg-[#EFD7DF]"
+                            >
+                              <Plus size={16} />
+                              Agregar
+                            </button>
+                          </div>
+
+                          {(form.configuracion_variantes?.personalizados || []).length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {form.configuracion_variantes.personalizados.map((item) => (
+                                <span
+                                  key={item.clave}
+                                  className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[10px] font-black text-[#755F67] ring-1 ring-[#EADCE1]"
+                                >
+                                  {item.etiqueta}
+                                  <button
+                                    type="button"
+                                    onClick={() => eliminarAtributoPersonalizado(item.clave)}
+                                    className="text-[#B85F7D] hover:text-[#8E405B]"
+                                    aria-label={`Eliminar ${item.etiqueta}`}
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* TRAZABILIDAD */}
+                    {(form.controla_lotes || form.controla_caducidad) && (
+                      <div className="mt-4 rounded-2xl border border-[#F3D6DE] bg-[#FFF3F6] px-4 py-3 text-xs font-semibold leading-relaxed text-[#916070]">
+                        {form.controla_caducidad
+                          ? 'La caducidad se registra por lote; por eso el control de lotes permanece activado automáticamente.'
+                          : 'Los lotes se administrarán al registrar entradas de inventario. Un mismo producto o variante podrá tener varios lotes.'}
+                      </div>
+                    )}
+
+                    {modoEdicion && (
+                      <div className="mt-4 border-t border-[#EFE1E6] pt-4">
                         <OpcionControl
                           name="activo"
                           checked={form.activo}
                           onChange={handleChange}
                           icono={BadgeCheck}
                           titulo="Producto activo"
-                          detalle="Visible para operación"
+                          detalle="Disponible para inventario, movimientos y venta."
                         />
-                      )}
-                    </div>
-
-                    {form.controla_caducidad && (
-                      <div className="mt-4 rounded-2xl border border-[#F3D6DE] bg-[#FFF3F6] px-4 py-3 text-xs font-semibold leading-relaxed text-[#916070]">
-                        Al controlar caducidad, el producto también debe manejar lotes. Esta opción se activa automáticamente.
                       </div>
                     )}
                   </div>

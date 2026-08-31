@@ -288,8 +288,69 @@ const formatearPagosVenta = (venta, formatoMoneda) => {
     .join(' | ');
 };
 
+const parsearAtributosVarianteReporte = (valor) => {
+  if (!valor) return {};
+  if (typeof valor === 'object' && !Array.isArray(valor)) return valor;
+
+  if (typeof valor === 'string') {
+    try {
+      const parsed = JSON.parse(valor);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+        ? parsed
+        : {};
+    } catch {
+      return {};
+    }
+  }
+
+  return {};
+};
+
+const obtenerDescripcionVarianteReporte = (item = {}) => {
+  if (!item?.id_variante) return '—';
+
+  const nombreVariante = String(item.nombre_variante || '').trim();
+  if (nombreVariante) return nombreVariante;
+
+  const atributos = parsearAtributosVarianteReporte(item.atributos_variante);
+  const valores = [
+    item.talla,
+    item.color,
+    item.tono,
+    item.presentacion_variante,
+    ...Object.values(atributos),
+  ]
+    .map((valor) => String(valor ?? '').trim())
+    .filter(Boolean);
+
+  const unicos = [...new Set(valores)];
+  return unicos.join(' · ') || `Variante #${item.id_variante}`;
+};
+
+const obtenerCodigoVarianteReporte = (item = {}) => {
+  return (
+    item.sku_variante ||
+    item.codigo_barras_variante ||
+    item.codigo_barras_producto ||
+    item.codigo_barras ||
+    '—'
+  );
+};
+
+
 
 function ReporteCierreCajaImprimible({ reporte }) {
+  const formatoNumero = (valor) => {
+    const numero = Number(valor || 0);
+
+    if (!Number.isFinite(numero)) return '0';
+
+    return numero.toLocaleString('es-MX', {
+      minimumFractionDigits: Number.isInteger(numero) ? 0 : 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
   const formatoMoneda = (valor) => {
     return Number(valor || 0).toLocaleString('es-MX', {
       style: 'currency',
@@ -317,6 +378,7 @@ function ReporteCierreCajaImprimible({ reporte }) {
   const resumen = reporte?.resumen || {};
   const ventas = reporte?.ventas || [];
   const productos = reporte?.productos || [];
+  const detalleProductos = reporte?.detalle_productos || [];
   const movimientos = reporte?.movimientos || [];
 
   const ventasAgrupadas = agruparVentas(ventas);
@@ -494,9 +556,9 @@ function ReporteCierreCajaImprimible({ reporte }) {
           rightColumns={[3]}
         />
 
-        {/* PRODUCTOS */}
+        {/* RESUMEN DE PRODUCTOS */}
         <TablaReporte
-          titulo="Productos vendidos"
+          titulo="Resumen de productos vendidos"
           columnas={['Producto', 'Cantidad', 'Total vendido']}
           vacio="No hay productos vendidos."
           filas={productos.map((producto) => [
@@ -505,6 +567,25 @@ function ReporteCierreCajaImprimible({ reporte }) {
             formatoMoneda(producto.total_vendido),
           ])}
           rightColumns={[1, 2]}
+        />
+
+        {/* DETALLE DE PRODUCTOS / VARIANTES */}
+        <TablaReporte
+          titulo="Detalle de productos vendidos"
+          columnas={['Folio', 'Producto / variante', 'Código / SKU', 'Lote', 'Cant.', 'P. unitario', 'Subtotal']}
+          vacio="No hay detalle de productos vendidos."
+          filas={detalleProductos.map((item) => [
+            item.folio_venta || '—',
+            item.id_variante
+              ? `${item.producto || 'Producto'} · ${obtenerDescripcionVarianteReporte(item)}`
+              : item.producto || '—',
+            obtenerCodigoVarianteReporte(item),
+            item.lote || 'Sin lote',
+            formatoNumero(item.cantidad),
+            formatoMoneda(item.precio_unitario),
+            formatoMoneda(item.subtotal),
+          ])}
+          rightColumns={[4, 5, 6]}
         />
 
         {/* MOVIMIENTOS */}
