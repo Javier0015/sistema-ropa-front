@@ -184,8 +184,8 @@ const obtenerDetalleVariantePOS = (producto, variante) => {
 
   const atributos =
     variante?.atributos &&
-    typeof variante.atributos === 'object' &&
-    !Array.isArray(variante.atributos)
+      typeof variante.atributos === 'object' &&
+      !Array.isArray(variante.atributos)
       ? variante.atributos
       : {};
 
@@ -328,8 +328,8 @@ export default function POS() {
   const construirProductoConVariante = (producto, variante) => {
     const precioVariante =
       variante?.precio_venta !== undefined &&
-      variante?.precio_venta !== null &&
-      variante?.precio_venta !== ''
+        variante?.precio_venta !== null &&
+        variante?.precio_venta !== ''
         ? Number(variante.precio_venta)
         : Number(producto?.precio_venta || 0);
 
@@ -366,8 +366,8 @@ export default function POS() {
         null,
       atributos_variante:
         variante.atributos &&
-        typeof variante.atributos === 'object' &&
-        !Array.isArray(variante.atributos)
+          typeof variante.atributos === 'object' &&
+          !Array.isArray(variante.atributos)
           ? variante.atributos
           : {},
       detalle_variante: detalle,
@@ -730,34 +730,58 @@ export default function POS() {
 
     try {
       setCargandoLotes(true);
+
       const params = new URLSearchParams();
       params.append('sucursal', idSucursal);
       params.append('producto', producto.id_producto);
-      if (producto.id_variante) params.append('variante', producto.id_variante);
+
+      // Si el producto usa variantes y ya se eligió una, la enviamos al backend.
+      if (producto.id_variante) {
+        params.append('variante', producto.id_variante);
+      }
 
       const { data } = await api.get(`/inventario/lotes?${params.toString()}`);
 
-      if (data.ok) {
-        return (data.lotes || []).filter((lote) => {
-          const tieneStock = Number(lote.stock_actual || 0) > 0;
-          if (!tieneStock) return false;
+      if (!data?.ok) return [];
 
-          if (producto.id_variante) {
-            return Number(lote.id_variante || 0) === Number(producto.id_variante);
+      const lotes = Array.isArray(data.lotes) ? data.lotes : [];
+
+      return lotes.filter((lote) => {
+        const stockDisponible = Number(lote.stock_actual || 0);
+        const loteActivo = esValorActivo(lote.activo);
+
+        // En el POS nunca mostramos lotes sin existencia o inactivos.
+        if (!loteActivo || stockDisponible <= 0) return false;
+
+        // Para productos CON variantes sí exigimos que el lote corresponda
+        // exactamente a la variante elegida.
+        if (productoUsaVariantes(producto)) {
+          const idVarianteProducto = Number(producto.id_variante || 0);
+
+          if (!Number.isInteger(idVarianteProducto) || idVarianteProducto <= 0) {
+            return false;
           }
 
-          return !lote.id_variante;
-        });
-      }
+          return Number(lote.id_variante || 0) === idVarianteProducto;
+        }
 
-      return [];
+        // Compatibilidad con inventarios creados antes de la migración de
+        // variantes: si el producto NO usa variantes, permitimos sus lotes
+        // aunque un lote histórico conserve id_variante. El backend valida
+        // siempre id_lote + sucursal + producto antes de descontar.
+        return true;
+      });
     } catch (error) {
-      console.error(error);
+      console.error('Error al cargar lotes del POS:', error);
+
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: error.response?.data?.mensaje || 'No se pudieron cargar los lotes del producto.',
+        text:
+          error.response?.data?.mensaje ||
+          'No se pudieron cargar los lotes del producto.',
       });
+
       return [];
     } finally {
       setCargandoLotes(false);
@@ -1308,16 +1332,16 @@ export default function POS() {
         <hr style="margin:10px 0" />
         <p><b>Pago mixto:</b></p>
         ${pagosParaEnviar
-          .map((pago) => `<p>${pago.metodo_pago}: <b>${formatoMoneda(pago.monto)}</b></p>`)
-          .join('')}
+        .map((pago) => `<p>${pago.metodo_pago}: <b>${formatoMoneda(pago.monto)}</b></p>`)
+        .join('')}
         <p><b>Total pagado:</b> ${formatoMoneda(totalPagadoMixto)}</p>
         <p><b>Cambio:</b> ${formatoMoneda(cambioMixto)}</p>
       `
       : `
         <p><b>Método:</b> ${metodoPago === 'PUNTOS' ? 'Pagar con puntos' : metodoPago}</p>
         ${metodoPago === 'EFECTIVO'
-          ? `<p><b>Recibido:</b> ${formatoMoneda(resumen.recibido)}</p><p><b>Cambio:</b> ${formatoMoneda(resumen.cambio)}</p>`
-          : ''}
+        ? `<p><b>Recibido:</b> ${formatoMoneda(resumen.recibido)}</p><p><b>Cambio:</b> ${formatoMoneda(resumen.cambio)}</p>`
+        : ''}
       `;
 
     const detalleTicketDigitalHtml = ticketDigitalSolicitado
@@ -1335,8 +1359,8 @@ export default function POS() {
           <p><b>Productos:</b> ${carrito.length}</p>
           <p><b>Total:</b> ${formatoMoneda(resumen.total)}</p>
           ${resumen.descuentoOfertas > 0
-            ? `<p><b>Descuento por ofertas:</b> -${formatoMoneda(resumen.descuentoOfertas)}</p>`
-            : ''}
+          ? `<p><b>Descuento por ofertas:</b> -${formatoMoneda(resumen.descuentoOfertas)}</p>`
+          : ''}
           <p><b>IVA:</b> ${cobrarImpuesto ? `Aplicado (${formatoMoneda(resumen.impuesto)})` : 'No aplicado'}</p>
           ${detallePagosHtml}
           ${detalleTicketDigitalHtml}
@@ -1399,15 +1423,15 @@ export default function POS() {
             ? `
               <hr style="margin:10px 0" />
               <p><b>Ticket digital:</b> enviado correctamente a ${escaparHtmlSeguro(
-                ticketDigitalResultado.correo_destino || correoTicketDigital
-              )}.</p>
+              ticketDigitalResultado.correo_destino || correoTicketDigital
+            )}.</p>
             `
             : `
               <hr style="margin:10px 0" />
               <p><b>Ticket digital:</b> la venta se registró, pero no se pudo enviar.</p>
               <p style="font-size:12px;color:#92400e">${escaparHtmlSeguro(
-                ticketDigitalResultado.mensaje || 'Revisa la configuración de correo.'
-              )}</p>
+              ticketDigitalResultado.mensaje || 'Revisa la configuración de correo.'
+            )}</p>
             `
           : '';
 
@@ -1415,22 +1439,35 @@ export default function POS() {
           icon: 'success',
           title: 'Venta registrada',
           html: `
-            <div style="text-align:left">
-              <p><b>Folio:</b> ${data.venta.folio}</p>
-              <p><b>Total:</b> ${formatoMoneda(data.resumen?.total || 0)}</p>
-              <p><b>Método:</b> ${pagoMixtoActivo ? 'MIXTO' : metodoPago}</p>
-              ${pagoMixtoActivo
-                ? `<p><b>Pagado:</b> ${formatoMoneda(totalPagadoMixto)}</p><p><b>Cambio:</b> ${formatoMoneda(cambioMixto)}</p>`
-                : metodoPago !== 'PUNTOS'
-                  ? `<p><b>Cambio:</b> ${formatoMoneda(data.resumen?.cambio || 0)}</p>`
-                  : ''}
-              ${detalleTicketDigitalResultadoHtml}
-            </div>
-          `,
+    <div style="text-align:left">
+      <p><b>Folio:</b> ${data.venta.folio}</p>
+      <p><b>Total:</b> ${formatoMoneda(data.resumen?.total || 0)}</p>
+      <p><b>Método:</b> ${pagoMixtoActivo ? 'MIXTO' : metodoPago}</p>
+
+      ${pagoMixtoActivo
+              ? `
+              <p><b>Pagado:</b> ${formatoMoneda(totalPagadoMixto)}</p>
+              <p><b>Cambio:</b> ${formatoMoneda(cambioMixto)}</p>
+            `
+              : metodoPago !== 'PUNTOS'
+                ? `
+                <p><b>Cambio:</b> ${formatoMoneda(
+                  data.resumen?.cambio || 0
+                )}</p>
+              `
+                : ''
+            }
+
+      ${detalleTicketDigitalResultadoHtml}
+    </div>
+  `,
+
+          // Ocultar botón de imprimir
+          showConfirmButton: false,
+
+          // Dejamos únicamente "Cerrar"
           showCancelButton: true,
-          confirmButtonText: 'Imprimir ticket',
           cancelButtonText: 'Cerrar',
-          confirmButtonColor: '#B85F7D',
           cancelButtonColor: '#8B7A80',
         });
 
@@ -1638,8 +1675,8 @@ export default function POS() {
     const lineas = Array.isArray(valor)
       ? valor
       : String(valor ?? '')
-          .replace(/\r\n/g, '\n')
-          .split('\n');
+        .replace(/\r\n/g, '\n')
+        .split('\n');
 
     return lineas.flatMap((linea) =>
       envolverLineaTicketLocal(linea, ancho)
@@ -2436,16 +2473,14 @@ export default function POS() {
                   Nueva venta
                 </h1>
                 <span
-                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black ${
-                    sesionAbierta
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black ${sesionAbierta
                       ? 'bg-emerald-100 text-emerald-700'
                       : 'bg-amber-100 text-amber-800'
-                  }`}
+                    }`}
                 >
                   <span
-                    className={`h-2 w-2 rounded-full ${
-                      sesionAbierta ? 'bg-emerald-500' : 'bg-amber-500'
-                    }`}
+                    className={`h-2 w-2 rounded-full ${sesionAbierta ? 'bg-emerald-500' : 'bg-amber-500'
+                      }`}
                   />
                   {sesionAbierta ? 'Lista para vender' : 'Caja cerrada'}
                 </span>
@@ -3056,11 +3091,10 @@ function CarritoPOS({
 
   return (
     <aside
-      className={`min-w-0 overflow-hidden bg-white ${
-        modoMovil
+      className={`min-w-0 overflow-hidden bg-white ${modoMovil
           ? 'rounded-t-[2rem]'
           : 'rounded-[1.75rem] border border-[#F0E2E7] shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto'
-      }`}
+        }`}
     >
       <div className="bg-[#B85F7D] px-4 py-4 text-white sm:px-5">
         <div className="flex items-center justify-between gap-3">
@@ -3214,11 +3248,10 @@ function CarritoPOS({
                   key={metodo.id}
                   type="button"
                   onClick={() => seleccionarMetodoPago(metodo.id)}
-                  className={`flex min-h-[68px] flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-2 text-[10px] font-black transition sm:text-xs ${
-                    activo
+                  className={`flex min-h-[68px] flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-2 text-[10px] font-black transition sm:text-xs ${activo
                       ? 'bg-[#B85F7D] text-white shadow-md shadow-[#B85F7D]/15'
                       : 'bg-[#FFF0F4] text-[#755F67]'
-                  }`}
+                    }`}
                 >
                   <Icono size={20} />
                   {metodo.label}
@@ -3263,11 +3296,10 @@ function CarritoPOS({
             )}
 
             <div
-              className={`mt-3 rounded-2xl px-4 py-3 ${
-                resumen.cambio >= 0
+              className={`mt-3 rounded-2xl px-4 py-3 ${resumen.cambio >= 0
                   ? 'bg-emerald-50 text-emerald-700'
                   : 'bg-amber-50 text-amber-800'
-              }`}
+                }`}
             >
               <p className="text-[10px] font-black uppercase tracking-wide opacity-70">
                 {resumen.cambio >= 0 ? 'Cambio' : 'Falta por recibir'}
@@ -3283,11 +3315,10 @@ function CarritoPOS({
 
         {!pagoMixtoActivo && metodoPago === 'PUNTOS' && (
           <div
-            className={`mt-4 rounded-2xl px-4 py-3 text-sm font-black ${
-              resumen.puedePagarConPuntos
+            className={`mt-4 rounded-2xl px-4 py-3 text-sm font-black ${resumen.puedePagarConPuntos
                 ? 'bg-emerald-50 text-emerald-700'
                 : 'bg-red-50 text-red-700'
-            }`}
+              }`}
           >
             {tarjetaPuntos
               ? resumen.puedePagarConPuntos
@@ -3390,11 +3421,10 @@ function CarritoPOS({
                     <button
                       type="button"
                       onClick={() => seleccionarMetodoPago('PUNTOS')}
-                      className={`mt-3 w-full rounded-2xl px-3 py-2.5 text-xs font-black ${
-                        metodoPago === 'PUNTOS'
+                      className={`mt-3 w-full rounded-2xl px-3 py-2.5 text-xs font-black ${metodoPago === 'PUNTOS'
                           ? 'bg-emerald-700 text-white'
                           : 'bg-white text-emerald-800'
-                      }`}
+                        }`}
                     >
                       {metodoPago === 'PUNTOS' ? 'Pago con puntos seleccionado' : 'Pagar con puntos'}
                     </button>
@@ -3440,14 +3470,12 @@ function CarritoPOS({
                 <button
                   type="button"
                   onClick={alternarPagoMixto}
-                  className={`relative h-8 w-14 shrink-0 rounded-full transition ${
-                    pagoMixtoActivo ? 'bg-[#B85F7D]' : 'bg-[#D8C8CD]'
-                  }`}
+                  className={`relative h-8 w-14 shrink-0 rounded-full transition ${pagoMixtoActivo ? 'bg-[#B85F7D]' : 'bg-[#D8C8CD]'
+                    }`}
                 >
                   <span
-                    className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition ${
-                      pagoMixtoActivo ? 'left-7' : 'left-1'
-                    }`}
+                    className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition ${pagoMixtoActivo ? 'left-7' : 'left-1'
+                      }`}
                   />
                 </button>
               </div>
@@ -3512,14 +3540,12 @@ function CarritoPOS({
                 <button
                   type="button"
                   onClick={() => setCobrarImpuesto(!cobrarImpuesto)}
-                  className={`relative h-8 w-14 shrink-0 rounded-full transition ${
-                    cobrarImpuesto ? 'bg-[#B85F7D]' : 'bg-[#D8C8CD]'
-                  }`}
+                  className={`relative h-8 w-14 shrink-0 rounded-full transition ${cobrarImpuesto ? 'bg-[#B85F7D]' : 'bg-[#D8C8CD]'
+                    }`}
                 >
                   <span
-                    className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition ${
-                      cobrarImpuesto ? 'left-7' : 'left-1'
-                    }`}
+                    className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition ${cobrarImpuesto ? 'left-7' : 'left-1'
+                      }`}
                   />
                 </button>
               </div>
@@ -3646,8 +3672,8 @@ function ModalVariantesProducto({
 
                 const precioVariante =
                   variante?.precio_venta !== undefined &&
-                  variante?.precio_venta !== null &&
-                  variante?.precio_venta !== ''
+                    variante?.precio_venta !== null &&
+                    variante?.precio_venta !== ''
                     ? Number(variante.precio_venta)
                     : Number(producto?.precio_venta || 0);
 
@@ -3657,11 +3683,11 @@ function ModalVariantesProducto({
 
                 const precioFinal = tieneOfertaActiva(producto)
                   ? Number(
-                      (
-                        precioVariante -
-                        precioVariante * (porcentaje / 100)
-                      ).toFixed(2)
-                    )
+                    (
+                      precioVariante -
+                      precioVariante * (porcentaje / 100)
+                    ).toFixed(2)
+                  )
                   : precioVariante;
 
                 return (

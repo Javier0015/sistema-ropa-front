@@ -289,17 +289,17 @@ export default function StockSucursales() {
       : 0;
 
   return (
-    <div className="w-full max-w-full overflow-hidden space-y-6 pb-10">
+    <div className="w-full max-w-full overflow-hidden space-y-6 rounded-[2.25rem] bg-gradient-to-b from-rose-50/60 via-white to-pink-50/40 p-2 sm:p-3 pb-10">
       {/* HERO */}
-      <section className="relative overflow-hidden rounded-[2rem] bg-slate-950 text-white shadow-xl">
-        <div className="absolute inset-0 bg-gradient-to-br from-sky-600/45 via-cyan-500/20 to-emerald-500/10" />
-        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-sky-400/20 blur-3xl" />
-        <div className="absolute bottom-0 -left-24 h-72 w-72 rounded-full bg-cyan-300/10 blur-3xl" />
+      <section className="relative overflow-hidden rounded-[2rem] bg-rose-950 text-white shadow-xl shadow-rose-950/15">
+        <div className="absolute inset-0 bg-gradient-to-br from-rose-600/55 via-pink-500/30 to-fuchsia-500/20" />
+        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-pink-400/25 blur-3xl" />
+        <div className="absolute bottom-0 -left-24 h-72 w-72 rounded-full bg-rose-300/15 blur-3xl" />
 
         <div className="relative p-5 sm:p-7 lg:p-8">
           <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
             <div className="min-w-0">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/10 px-3 py-1 text-xs sm:text-sm font-bold text-sky-100">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/10 px-3 py-1 text-xs sm:text-sm font-bold text-rose-100">
                 <Boxes size={15} />
                 Inventario intersucursales
               </div>
@@ -316,7 +316,7 @@ export default function StockSucursales() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full xl:w-auto">
               <div className="rounded-3xl bg-white/10 border border-white/10 p-4 backdrop-blur-sm">
-                <p className="text-xs font-bold uppercase text-sky-100">
+                <p className="text-xs font-bold uppercase text-rose-100">
                   Total disponible
                 </p>
                 <p className="mt-2 text-2xl font-black">
@@ -325,7 +325,7 @@ export default function StockSucursales() {
               </div>
 
               <div className="rounded-3xl bg-white/10 border border-white/10 p-4 backdrop-blur-sm">
-                <p className="text-xs font-bold uppercase text-emerald-100">
+                <p className="text-xs font-bold uppercase text-pink-100">
                   Con stock
                 </p>
                 <p className="mt-2 text-2xl font-black">
@@ -334,7 +334,7 @@ export default function StockSucursales() {
               </div>
 
               <div className="rounded-3xl bg-white/10 border border-white/10 p-4 backdrop-blur-sm">
-                <p className="text-xs font-bold uppercase text-amber-100">
+                <p className="text-xs font-bold uppercase text-fuchsia-100">
                   Disponibilidad
                 </p>
                 <p className="mt-2 text-2xl font-black">
@@ -347,7 +347,7 @@ export default function StockSucursales() {
       </section>
 
       {/* BUSCADOR */}
-      <section className="bg-white rounded-[2rem] shadow-sm border border-slate-100 p-4 sm:p-5">
+      <section className="bg-white/95 rounded-[2rem] shadow-sm shadow-rose-900/5 border border-rose-100 p-4 sm:p-5">
         <form onSubmit={buscarStock} className="flex flex-col xl:flex-row gap-3">
           <div className="relative flex-1 min-w-0">
             <Search
@@ -377,13 +377,13 @@ export default function StockSucursales() {
               aria-expanded={mostrarSugerencias && busqueda.trim().length >= 2}
               aria-controls="sugerencias-stock-sucursales"
               placeholder="Buscar por nombre, código de barras o descripción del producto..."
-              className="w-full pl-12 pr-12 py-4 rounded-2xl border border-slate-200 bg-slate-50/60 text-slate-800 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+              className="w-full pl-12 pr-12 py-4 rounded-2xl border border-slate-200 bg-slate-50/60 text-slate-800 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
             />
 
             {cargandoSugerencias && (
               <Loader2
                 size={19}
-                className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-sky-600"
+                className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-rose-600"
               />
             )}
 
@@ -413,8 +413,8 @@ export default function StockSucursales() {
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => seleccionarProducto(item)}
                         className={`flex w-full items-start justify-between gap-4 px-4 py-3 text-left transition ${indiceSugerencia === index
-                          ? 'bg-sky-50 text-sky-950'
-                          : 'hover:bg-sky-50 text-slate-800'
+                          ? 'bg-rose-50 text-rose-950'
+                          : 'hover:bg-rose-50 text-slate-800'
                           }`}
                       >
                         <div className="min-w-0">
@@ -428,7 +428,7 @@ export default function StockSucursales() {
                           </p>
                         </div>
 
-                        <span className="shrink-0 rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-black text-sky-700">
+                        <span className="shrink-0 rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-black text-rose-700">
                           Ver stock
                         </span>
                       </button>
@@ -442,7 +442,7 @@ export default function StockSucursales() {
           <button
             type="submit"
             disabled={cargando}
-            className="px-6 py-4 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-black shadow-lg shadow-sky-900/20 transition disabled:opacity-60 inline-flex items-center justify-center gap-2"
+            className="px-6 py-4 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black shadow-lg shadow-rose-900/20 transition disabled:opacity-60 inline-flex items-center justify-center gap-2"
           >
             {cargando ? (
               <>
@@ -488,15 +488,15 @@ export default function StockSucursales() {
       {producto && (
         <section className="grid grid-cols-1 xl:grid-cols-12 gap-5">
           {/* Tarjeta principal producto */}
-          <div className="xl:col-span-6 bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
-            <div className="p-5 sm:p-6 bg-gradient-to-br from-sky-50 to-white border-b border-slate-100">
+          <div className="xl:col-span-6 bg-white/95 rounded-[2rem] shadow-sm shadow-rose-900/5 border border-rose-100 overflow-hidden">
+            <div className="p-5 sm:p-6 bg-gradient-to-br from-rose-50 via-pink-50/40 to-white border-b border-slate-100">
               <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-3xl bg-sky-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-sky-900/20">
+                <div className="w-14 h-14 rounded-3xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-rose-900/20">
                   <Package size={28} />
                 </div>
 
                 <div className="min-w-0">
-                  <p className="text-xs font-black uppercase tracking-wide text-sky-700">
+                  <p className="text-xs font-black uppercase tracking-wide text-rose-700">
                     Producto consultado
                   </p>
 
@@ -514,7 +514,7 @@ export default function StockSucursales() {
             <div className="p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="rounded-3xl bg-slate-50 border border-slate-100 p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-white text-sky-700 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-2xl bg-white text-rose-700 flex items-center justify-center">
                     <Barcode size={21} />
                   </div>
 
@@ -531,7 +531,7 @@ export default function StockSucursales() {
 
               <div className="rounded-3xl bg-slate-50 border border-slate-100 p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-white text-emerald-700 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-2xl bg-white text-pink-700 flex items-center justify-center">
                     <ShieldCheck size={21} />
                   </div>
 
@@ -550,7 +550,7 @@ export default function StockSucursales() {
 
           {/* KPIS */}
           <div className="xl:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 p-5">
+            <div className="bg-white/95 rounded-[2rem] shadow-sm shadow-rose-900/5 border border-rose-100 p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
                   <Boxes size={24} />
@@ -574,13 +574,13 @@ export default function StockSucursales() {
               </p>
             </div>
 
-            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 p-5">
+            <div className="bg-white/95 rounded-[2rem] shadow-sm shadow-rose-900/5 border border-rose-100 p-5">
               <div className="flex items-start justify-between gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-700 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-700 flex items-center justify-center">
                   <Store size={24} />
                 </div>
 
-                <span className="text-xs font-black bg-sky-50 text-sky-700 px-3 py-1 rounded-full">
+                <span className="text-xs font-black bg-rose-50 text-rose-700 px-3 py-1 rounded-full">
                   Sucursales
                 </span>
               </div>
@@ -598,7 +598,7 @@ export default function StockSucursales() {
               </p>
             </div>
 
-            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 p-5">
+            <div className="bg-white/95 rounded-[2rem] shadow-sm shadow-rose-900/5 border border-rose-100 p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center">
                   <AlertCircle size={24} />
@@ -622,7 +622,7 @@ export default function StockSucursales() {
               </p>
             </div>
 
-            <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 p-5">
+            <div className="bg-white/95 rounded-[2rem] shadow-sm shadow-rose-900/5 border border-rose-100 p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-700 flex items-center justify-center">
                   <XCircle size={24} />
@@ -651,10 +651,10 @@ export default function StockSucursales() {
 
       {/* TABLA */}
       {sucursales.length > 0 && (
-        <section className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
+        <section className="bg-white/95 rounded-[2rem] shadow-sm shadow-rose-900/5 border border-rose-100 overflow-hidden">
           <div className="p-5 sm:p-6 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="min-w-0">
-              <div className="inline-flex items-center gap-2 rounded-full bg-sky-50 text-sky-700 px-3 py-1 text-xs font-black mb-3">
+              <div className="inline-flex items-center gap-2 rounded-full bg-rose-50 text-rose-700 px-3 py-1 text-xs font-black mb-3">
                 <Layers3 size={14} />
                 Detalle por sucursal
               </div>
@@ -725,10 +725,10 @@ export default function StockSucursales() {
                   const stock = Number(item.stock || 0);
 
                   return (
-                    <tr key={item.id_sucursal || index} className="hover:bg-slate-50 transition">
+                    <tr key={item.id_sucursal || index} className="hover:bg-rose-50/50 transition">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-11 h-11 rounded-2xl bg-sky-50 text-sky-700 flex items-center justify-center shrink-0">
+                          <div className="w-11 h-11 rounded-2xl bg-rose-50 text-rose-700 flex items-center justify-center shrink-0">
                             <Building2 size={21} />
                           </div>
 
@@ -798,7 +798,7 @@ export default function StockSucursales() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
-                      <div className="w-11 h-11 rounded-2xl bg-white text-sky-700 flex items-center justify-center shrink-0">
+                      <div className="w-11 h-11 rounded-2xl bg-white text-rose-700 flex items-center justify-center shrink-0">
                         <Store size={21} />
                       </div>
 
@@ -839,10 +839,10 @@ export default function StockSucursales() {
 
       {/* ESTADO VACÍO */}
       {!producto && sucursales.length === 0 && !mensaje && !cargando && (
-        <section className="relative overflow-hidden bg-white rounded-[2rem] shadow-sm border border-slate-100 p-8 sm:p-12 text-center">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400" />
+        <section className="relative overflow-hidden bg-white/95 rounded-[2rem] shadow-sm shadow-rose-900/5 border border-rose-100 p-8 sm:p-12 text-center">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-rose-500 via-pink-400 to-fuchsia-400" />
 
-          <div className="w-20 h-20 rounded-[2rem] bg-sky-50 text-sky-700 flex items-center justify-center mx-auto mb-5">
+          <div className="w-20 h-20 rounded-[2rem] bg-rose-50 text-rose-700 flex items-center justify-center mx-auto mb-5">
             <Search size={36} />
           </div>
 

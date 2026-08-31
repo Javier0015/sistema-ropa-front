@@ -33,7 +33,7 @@ import {
 const CONFIGURACION_IMPRESION_LOCAL = {
   url: 'http://localhost:3030',
   apiKey: 'shaddai-printer-2026',
-  modoPrueba: false,
+  modoPrueba: true,
 };
 
 const API_IMPRESION_LOCAL = CONFIGURACION_IMPRESION_LOCAL.url;
@@ -2032,13 +2032,14 @@ export default function Ventas() {
                         </button>
                       )}
 
-                    <button
+                  {/*  <button
                       onClick={abrirTicket}
                       className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-[#44353B] hover:bg-[#35292E] text-white font-bold transition"
                     >
                       <ReceiptText size={19} />
                       Ver ticket
                     </button>
+                     */}
                   </section>
                 </div>
               ) : null}
