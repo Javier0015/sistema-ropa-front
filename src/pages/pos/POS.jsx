@@ -48,6 +48,24 @@ const METODOS_PAGO_POS = [
 
 const DIAS_ALERTA_CADUCIDAD_POS = 30;
 
+const resolverUrlImagenVariante = (ruta) => {
+  const valor = String(ruta || '').trim();
+
+  if (!valor) return '';
+
+  if (
+    valor.startsWith('http://') ||
+    valor.startsWith('https://') ||
+    valor.startsWith('data:') ||
+    valor.startsWith('blob:')
+  ) {
+    return valor;
+  }
+
+  const baseApi = String(api.defaults.baseURL || '').replace(/\/api\/?$/, '');
+  return `${baseApi}${valor.startsWith('/') ? '' : '/'}${valor}`;
+};
+
 const esCorreoValido = (correo = '') => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(correo).trim());
 };
@@ -184,8 +202,8 @@ const obtenerDetalleVariantePOS = (producto, variante) => {
 
   const atributos =
     variante?.atributos &&
-      typeof variante.atributos === 'object' &&
-      !Array.isArray(variante.atributos)
+    typeof variante.atributos === 'object' &&
+    !Array.isArray(variante.atributos)
       ? variante.atributos
       : {};
 
@@ -328,8 +346,8 @@ export default function POS() {
   const construirProductoConVariante = (producto, variante) => {
     const precioVariante =
       variante?.precio_venta !== undefined &&
-        variante?.precio_venta !== null &&
-        variante?.precio_venta !== ''
+      variante?.precio_venta !== null &&
+      variante?.precio_venta !== ''
         ? Number(variante.precio_venta)
         : Number(producto?.precio_venta || 0);
 
@@ -366,8 +384,8 @@ export default function POS() {
         null,
       atributos_variante:
         variante.atributos &&
-          typeof variante.atributos === 'object' &&
-          !Array.isArray(variante.atributos)
+        typeof variante.atributos === 'object' &&
+        !Array.isArray(variante.atributos)
           ? variante.atributos
           : {},
       detalle_variante: detalle,
@@ -730,58 +748,34 @@ export default function POS() {
 
     try {
       setCargandoLotes(true);
-
       const params = new URLSearchParams();
       params.append('sucursal', idSucursal);
       params.append('producto', producto.id_producto);
-
-      // Si el producto usa variantes y ya se eligió una, la enviamos al backend.
-      if (producto.id_variante) {
-        params.append('variante', producto.id_variante);
-      }
+      if (producto.id_variante) params.append('variante', producto.id_variante);
 
       const { data } = await api.get(`/inventario/lotes?${params.toString()}`);
 
-      if (!data?.ok) return [];
+      if (data.ok) {
+        return (data.lotes || []).filter((lote) => {
+          const tieneStock = Number(lote.stock_actual || 0) > 0;
+          if (!tieneStock) return false;
 
-      const lotes = Array.isArray(data.lotes) ? data.lotes : [];
-
-      return lotes.filter((lote) => {
-        const stockDisponible = Number(lote.stock_actual || 0);
-        const loteActivo = esValorActivo(lote.activo);
-
-        // En el POS nunca mostramos lotes sin existencia o inactivos.
-        if (!loteActivo || stockDisponible <= 0) return false;
-
-        // Para productos CON variantes sí exigimos que el lote corresponda
-        // exactamente a la variante elegida.
-        if (productoUsaVariantes(producto)) {
-          const idVarianteProducto = Number(producto.id_variante || 0);
-
-          if (!Number.isInteger(idVarianteProducto) || idVarianteProducto <= 0) {
-            return false;
+          if (producto.id_variante) {
+            return Number(lote.id_variante || 0) === Number(producto.id_variante);
           }
 
-          return Number(lote.id_variante || 0) === idVarianteProducto;
-        }
+          return !lote.id_variante;
+        });
+      }
 
-        // Compatibilidad con inventarios creados antes de la migración de
-        // variantes: si el producto NO usa variantes, permitimos sus lotes
-        // aunque un lote histórico conserve id_variante. El backend valida
-        // siempre id_lote + sucursal + producto antes de descontar.
-        return true;
-      });
+      return [];
     } catch (error) {
-      console.error('Error al cargar lotes del POS:', error);
-
+      console.error(error);
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text:
-          error.response?.data?.mensaje ||
-          'No se pudieron cargar los lotes del producto.',
+        text: error.response?.data?.mensaje || 'No se pudieron cargar los lotes del producto.',
       });
-
       return [];
     } finally {
       setCargandoLotes(false);
@@ -1332,16 +1326,16 @@ export default function POS() {
         <hr style="margin:10px 0" />
         <p><b>Pago mixto:</b></p>
         ${pagosParaEnviar
-        .map((pago) => `<p>${pago.metodo_pago}: <b>${formatoMoneda(pago.monto)}</b></p>`)
-        .join('')}
+          .map((pago) => `<p>${pago.metodo_pago}: <b>${formatoMoneda(pago.monto)}</b></p>`)
+          .join('')}
         <p><b>Total pagado:</b> ${formatoMoneda(totalPagadoMixto)}</p>
         <p><b>Cambio:</b> ${formatoMoneda(cambioMixto)}</p>
       `
       : `
         <p><b>Método:</b> ${metodoPago === 'PUNTOS' ? 'Pagar con puntos' : metodoPago}</p>
         ${metodoPago === 'EFECTIVO'
-        ? `<p><b>Recibido:</b> ${formatoMoneda(resumen.recibido)}</p><p><b>Cambio:</b> ${formatoMoneda(resumen.cambio)}</p>`
-        : ''}
+          ? `<p><b>Recibido:</b> ${formatoMoneda(resumen.recibido)}</p><p><b>Cambio:</b> ${formatoMoneda(resumen.cambio)}</p>`
+          : ''}
       `;
 
     const detalleTicketDigitalHtml = ticketDigitalSolicitado
@@ -1359,8 +1353,8 @@ export default function POS() {
           <p><b>Productos:</b> ${carrito.length}</p>
           <p><b>Total:</b> ${formatoMoneda(resumen.total)}</p>
           ${resumen.descuentoOfertas > 0
-          ? `<p><b>Descuento por ofertas:</b> -${formatoMoneda(resumen.descuentoOfertas)}</p>`
-          : ''}
+            ? `<p><b>Descuento por ofertas:</b> -${formatoMoneda(resumen.descuentoOfertas)}</p>`
+            : ''}
           <p><b>IVA:</b> ${cobrarImpuesto ? `Aplicado (${formatoMoneda(resumen.impuesto)})` : 'No aplicado'}</p>
           ${detallePagosHtml}
           ${detalleTicketDigitalHtml}
@@ -1423,15 +1417,15 @@ export default function POS() {
             ? `
               <hr style="margin:10px 0" />
               <p><b>Ticket digital:</b> enviado correctamente a ${escaparHtmlSeguro(
-              ticketDigitalResultado.correo_destino || correoTicketDigital
-            )}.</p>
+                ticketDigitalResultado.correo_destino || correoTicketDigital
+              )}.</p>
             `
             : `
               <hr style="margin:10px 0" />
               <p><b>Ticket digital:</b> la venta se registró, pero no se pudo enviar.</p>
               <p style="font-size:12px;color:#92400e">${escaparHtmlSeguro(
-              ticketDigitalResultado.mensaje || 'Revisa la configuración de correo.'
-            )}</p>
+                ticketDigitalResultado.mensaje || 'Revisa la configuración de correo.'
+              )}</p>
             `
           : '';
 
@@ -1439,35 +1433,22 @@ export default function POS() {
           icon: 'success',
           title: 'Venta registrada',
           html: `
-    <div style="text-align:left">
-      <p><b>Folio:</b> ${data.venta.folio}</p>
-      <p><b>Total:</b> ${formatoMoneda(data.resumen?.total || 0)}</p>
-      <p><b>Método:</b> ${pagoMixtoActivo ? 'MIXTO' : metodoPago}</p>
-
-      ${pagoMixtoActivo
-              ? `
-              <p><b>Pagado:</b> ${formatoMoneda(totalPagadoMixto)}</p>
-              <p><b>Cambio:</b> ${formatoMoneda(cambioMixto)}</p>
-            `
-              : metodoPago !== 'PUNTOS'
-                ? `
-                <p><b>Cambio:</b> ${formatoMoneda(
-                  data.resumen?.cambio || 0
-                )}</p>
-              `
-                : ''
-            }
-
-      ${detalleTicketDigitalResultadoHtml}
-    </div>
-  `,
-
-          // Ocultar botón de imprimir
-          showConfirmButton: false,
-
-          // Dejamos únicamente "Cerrar"
+            <div style="text-align:left">
+              <p><b>Folio:</b> ${data.venta.folio}</p>
+              <p><b>Total:</b> ${formatoMoneda(data.resumen?.total || 0)}</p>
+              <p><b>Método:</b> ${pagoMixtoActivo ? 'MIXTO' : metodoPago}</p>
+              ${pagoMixtoActivo
+                ? `<p><b>Pagado:</b> ${formatoMoneda(totalPagadoMixto)}</p><p><b>Cambio:</b> ${formatoMoneda(cambioMixto)}</p>`
+                : metodoPago !== 'PUNTOS'
+                  ? `<p><b>Cambio:</b> ${formatoMoneda(data.resumen?.cambio || 0)}</p>`
+                  : ''}
+              ${detalleTicketDigitalResultadoHtml}
+            </div>
+          `,
           showCancelButton: true,
+          confirmButtonText: 'Imprimir ticket',
           cancelButtonText: 'Cerrar',
+          confirmButtonColor: '#B85F7D',
           cancelButtonColor: '#8B7A80',
         });
 
@@ -1675,8 +1656,8 @@ export default function POS() {
     const lineas = Array.isArray(valor)
       ? valor
       : String(valor ?? '')
-        .replace(/\r\n/g, '\n')
-        .split('\n');
+          .replace(/\r\n/g, '\n')
+          .split('\n');
 
     return lineas.flatMap((linea) =>
       envolverLineaTicketLocal(linea, ancho)
@@ -2473,14 +2454,16 @@ export default function POS() {
                   Nueva venta
                 </h1>
                 <span
-                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black ${sesionAbierta
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black ${
+                    sesionAbierta
                       ? 'bg-emerald-100 text-emerald-700'
                       : 'bg-amber-100 text-amber-800'
-                    }`}
+                  }`}
                 >
                   <span
-                    className={`h-2 w-2 rounded-full ${sesionAbierta ? 'bg-emerald-500' : 'bg-amber-500'
-                      }`}
+                    className={`h-2 w-2 rounded-full ${
+                      sesionAbierta ? 'bg-emerald-500' : 'bg-amber-500'
+                    }`}
                   />
                   {sesionAbierta ? 'Lista para vender' : 'Caja cerrada'}
                 </span>
@@ -3091,10 +3074,11 @@ function CarritoPOS({
 
   return (
     <aside
-      className={`min-w-0 overflow-hidden bg-white ${modoMovil
+      className={`min-w-0 overflow-hidden bg-white ${
+        modoMovil
           ? 'rounded-t-[2rem]'
           : 'rounded-[1.75rem] border border-[#F0E2E7] shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto'
-        }`}
+      }`}
     >
       <div className="bg-[#B85F7D] px-4 py-4 text-white sm:px-5">
         <div className="flex items-center justify-between gap-3">
@@ -3248,10 +3232,11 @@ function CarritoPOS({
                   key={metodo.id}
                   type="button"
                   onClick={() => seleccionarMetodoPago(metodo.id)}
-                  className={`flex min-h-[68px] flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-2 text-[10px] font-black transition sm:text-xs ${activo
+                  className={`flex min-h-[68px] flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-2 text-[10px] font-black transition sm:text-xs ${
+                    activo
                       ? 'bg-[#B85F7D] text-white shadow-md shadow-[#B85F7D]/15'
                       : 'bg-[#FFF0F4] text-[#755F67]'
-                    }`}
+                  }`}
                 >
                   <Icono size={20} />
                   {metodo.label}
@@ -3296,10 +3281,11 @@ function CarritoPOS({
             )}
 
             <div
-              className={`mt-3 rounded-2xl px-4 py-3 ${resumen.cambio >= 0
+              className={`mt-3 rounded-2xl px-4 py-3 ${
+                resumen.cambio >= 0
                   ? 'bg-emerald-50 text-emerald-700'
                   : 'bg-amber-50 text-amber-800'
-                }`}
+              }`}
             >
               <p className="text-[10px] font-black uppercase tracking-wide opacity-70">
                 {resumen.cambio >= 0 ? 'Cambio' : 'Falta por recibir'}
@@ -3315,10 +3301,11 @@ function CarritoPOS({
 
         {!pagoMixtoActivo && metodoPago === 'PUNTOS' && (
           <div
-            className={`mt-4 rounded-2xl px-4 py-3 text-sm font-black ${resumen.puedePagarConPuntos
+            className={`mt-4 rounded-2xl px-4 py-3 text-sm font-black ${
+              resumen.puedePagarConPuntos
                 ? 'bg-emerald-50 text-emerald-700'
                 : 'bg-red-50 text-red-700'
-              }`}
+            }`}
           >
             {tarjetaPuntos
               ? resumen.puedePagarConPuntos
@@ -3421,10 +3408,11 @@ function CarritoPOS({
                     <button
                       type="button"
                       onClick={() => seleccionarMetodoPago('PUNTOS')}
-                      className={`mt-3 w-full rounded-2xl px-3 py-2.5 text-xs font-black ${metodoPago === 'PUNTOS'
+                      className={`mt-3 w-full rounded-2xl px-3 py-2.5 text-xs font-black ${
+                        metodoPago === 'PUNTOS'
                           ? 'bg-emerald-700 text-white'
                           : 'bg-white text-emerald-800'
-                        }`}
+                      }`}
                     >
                       {metodoPago === 'PUNTOS' ? 'Pago con puntos seleccionado' : 'Pagar con puntos'}
                     </button>
@@ -3470,12 +3458,14 @@ function CarritoPOS({
                 <button
                   type="button"
                   onClick={alternarPagoMixto}
-                  className={`relative h-8 w-14 shrink-0 rounded-full transition ${pagoMixtoActivo ? 'bg-[#B85F7D]' : 'bg-[#D8C8CD]'
-                    }`}
+                  className={`relative h-8 w-14 shrink-0 rounded-full transition ${
+                    pagoMixtoActivo ? 'bg-[#B85F7D]' : 'bg-[#D8C8CD]'
+                  }`}
                 >
                   <span
-                    className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition ${pagoMixtoActivo ? 'left-7' : 'left-1'
-                      }`}
+                    className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition ${
+                      pagoMixtoActivo ? 'left-7' : 'left-1'
+                    }`}
                   />
                 </button>
               </div>
@@ -3540,12 +3530,14 @@ function CarritoPOS({
                 <button
                   type="button"
                   onClick={() => setCobrarImpuesto(!cobrarImpuesto)}
-                  className={`relative h-8 w-14 shrink-0 rounded-full transition ${cobrarImpuesto ? 'bg-[#B85F7D]' : 'bg-[#D8C8CD]'
-                    }`}
+                  className={`relative h-8 w-14 shrink-0 rounded-full transition ${
+                    cobrarImpuesto ? 'bg-[#B85F7D]' : 'bg-[#D8C8CD]'
+                  }`}
                 >
                   <span
-                    className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition ${cobrarImpuesto ? 'left-7' : 'left-1'
-                      }`}
+                    className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition ${
+                      cobrarImpuesto ? 'left-7' : 'left-1'
+                    }`}
                   />
                 </button>
               </div>
@@ -3619,150 +3611,275 @@ function ModalVariantesProducto({
   formatoNumero,
   tieneOfertaActiva,
 }) {
+  const [imagenAmpliada, setImagenAmpliada] = useState(null);
+
   const variantes = (producto?.variantes || []).filter(
     (variante) => Number(variante.stock_actual || 0) > 0
   );
 
+  const obtenerNombreVisible = (variante, detalle = []) => {
+    return (
+      variante?.nombre_variante ||
+      detalle
+        .map((item) => item.valor)
+        .filter(Boolean)
+        .join(' · ') ||
+      (variante?.precio_venta !== undefined &&
+      variante?.precio_venta !== null &&
+      variante?.precio_venta !== ''
+        ? `Precio ${formatoMoneda(variante.precio_venta)}`
+        : `Variante ${variante?.id_variante || ''}`)
+    );
+  };
+
+  const cerrarConEscape = (e) => {
+    if (e.key !== 'Escape') return;
+
+    if (imagenAmpliada) {
+      setImagenAmpliada(null);
+      return;
+    }
+
+    onClose();
+  };
+
+  useEffect(() => {
+    window.addEventListener('keydown', cerrarConEscape);
+    return () => window.removeEventListener('keydown', cerrarConEscape);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imagenAmpliada]);
+
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#392F33]/45 p-4 backdrop-blur-sm">
-      <div className="relative z-[81] flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-[2rem] bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-[#F4EAED] px-6 py-4">
-          <div>
-            <p className="text-xs font-black uppercase tracking-wide text-[#745D8A]">
-              Variantes disponibles
-            </p>
-            <h2 className="text-xl font-black text-[#392F33]">
-              Seleccionar variante
-            </h2>
-            <p className="text-sm text-[#8B7A80]">
-              Elige la combinación exacta que se venderá.
-            </p>
+    <>
+      <div className="fixed inset-0 z-[80] flex items-end justify-center bg-[#392F33]/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+        <div className="relative z-[81] flex h-[100dvh] w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[92vh] sm:max-w-4xl sm:rounded-[2rem]">
+          {/* Encabezado compacto y fijo para que en móvil siempre esté accesible. */}
+          <div className="sticky top-0 z-20 flex items-start justify-between gap-3 border-b border-[#F4EAED] bg-white/95 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#745D8A] sm:text-xs">
+                Variantes disponibles
+              </p>
+              <h2 className="mt-0.5 text-lg font-black leading-tight text-[#392F33] sm:text-xl">
+                Seleccionar variante
+              </h2>
+              <p className="mt-0.5 text-xs text-[#8B7A80] sm:text-sm">
+                Identifica visualmente la prenda y selecciona la correcta.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F0EBF6] text-[#745D8A] transition hover:bg-[#E9E1F0]"
+              aria-label="Cerrar selector de variantes"
+            >
+              <X size={20} />
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#F0EBF6] text-[#745D8A]"
-          >
-            <X size={20} />
-          </button>
-        </div>
+          <div className="flex-1 overflow-y-auto overscroll-contain px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:p-5">
+            {/* Información del producto. En móvil ocupa menos altura. */}
+            <div className="rounded-2xl bg-[#FFFAFB] px-4 py-3 sm:p-4">
+              <p className="truncate font-black text-[#392F33]">
+                {producto?.producto || producto?.nombre || 'Producto'}
+              </p>
+              <p className="mt-0.5 truncate text-[10px] font-semibold text-[#9A858D] sm:mt-1 sm:text-xs">
+                {producto?.codigo_barras
+                  ? `Código general: ${producto.codigo_barras}`
+                  : 'Sin código general'}
+                {producto?.marca ? ` · ${producto.marca}` : ''}
+              </p>
+            </div>
 
-        <div className="overflow-y-auto p-5">
-          <div className="rounded-2xl bg-[#FFFAFB] p-4">
-            <p className="font-black text-[#392F33]">
-              {producto?.producto || producto?.nombre || 'Producto'}
-            </p>
-            <p className="mt-1 text-xs text-[#9A858D]">
-              {producto?.codigo_barras
-                ? `Código general: ${producto.codigo_barras}`
-                : 'Sin código general'}
-              {producto?.marca ? ` · ${producto.marca}` : ''}
-            </p>
-          </div>
+            {/*
+              En teléfono mantenemos UNA tarjeta por fila para que la foto tenga
+              suficiente ancho. En tablet/escritorio regresamos a dos columnas.
+            */}
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:mt-4 md:grid-cols-2">
+              {variantes.length === 0 ? (
+                <div className="md:col-span-2">
+                  <EstadoTabla texto="No hay variantes con stock disponible." />
+                </div>
+              ) : (
+                variantes.map((variante) => {
+                  const detalle = obtenerDetalleVariantePOS(producto, variante);
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {variantes.length === 0 ? (
-              <div className="sm:col-span-2">
-                <EstadoTabla texto="No hay variantes con stock disponible." />
-              </div>
-            ) : (
-              variantes.map((variante) => {
-                const detalle = obtenerDetalleVariantePOS(producto, variante);
-
-                const precioVariante =
-                  variante?.precio_venta !== undefined &&
+                  const precioVariante =
+                    variante?.precio_venta !== undefined &&
                     variante?.precio_venta !== null &&
                     variante?.precio_venta !== ''
-                    ? Number(variante.precio_venta)
-                    : Number(producto?.precio_venta || 0);
+                      ? Number(variante.precio_venta)
+                      : Number(producto?.precio_venta || 0);
 
-                const porcentaje = Number(
-                  producto?.porcentaje_descuento || 0
-                );
+                  const porcentaje = Number(
+                    producto?.porcentaje_descuento || 0
+                  );
 
-                const precioFinal = tieneOfertaActiva(producto)
-                  ? Number(
-                    (
-                      precioVariante -
-                      precioVariante * (porcentaje / 100)
-                    ).toFixed(2)
-                  )
-                  : precioVariante;
+                  const precioFinal = tieneOfertaActiva(producto)
+                    ? Number(
+                        (
+                          precioVariante -
+                          precioVariante * (porcentaje / 100)
+                        ).toFixed(2)
+                      )
+                    : precioVariante;
 
-                return (
-                  <button
-                    key={variante.id_variante}
-                    type="button"
-                    onClick={() => onSeleccionar(producto, variante)}
-                    className="rounded-3xl border border-[#E8DCE1] bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-[#C9B4CC] hover:bg-[#FFFCFD] hover:shadow-md"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate font-black text-[#392F33]">
-                          {variante.nombre_variante ||
-                            detalle
-                              .map((item) => item.valor)
-                              .filter(Boolean)
-                              .join(' · ') ||
-                            `Variante ${variante.id_variante}`}
-                        </p>
+                  const nombreVisible = obtenerNombreVisible(variante, detalle);
+                  const urlImagen = resolverUrlImagenVariante(
+                    variante?.imagen_referencia ||
+                      variante?.imagen ||
+                      variante?.imagen_url ||
+                      variante?.foto_referencia ||
+                      ''
+                  );
 
-                        {(variante.sku || variante.codigo_barras) && (
-                          <p className="mt-1 truncate text-[10px] font-semibold text-[#9A858D]">
-                            {variante.sku ? `SKU ${variante.sku}` : ''}
-                            {variante.sku && variante.codigo_barras ? ' · ' : ''}
-                            {variante.codigo_barras
-                              ? `Código ${variante.codigo_barras}`
-                              : ''}
-                          </p>
-                        )}
-                      </div>
+                  return (
+                    <article
+                      key={variante.id_variante}
+                      className="overflow-hidden rounded-[1.6rem] border border-[#E8DCE1] bg-white shadow-sm transition md:hover:-translate-y-0.5 md:hover:border-[#C9B4CC] md:hover:shadow-md"
+                    >
+                      {/* Imagen grande. Se usa contain para no cortar prendas. */}
+                      {urlImagen ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setImagenAmpliada({
+                              url: urlImagen,
+                              nombre: nombreVisible,
+                            })
+                          }
+                          className="group relative block w-full overflow-hidden border-b border-[#F4EAED] bg-white text-left"
+                          aria-label={`Ampliar imagen de ${nombreVisible}`}
+                        >
+                          <div className="flex h-[46vh] min-h-[280px] max-h-[430px] w-full items-center justify-center bg-[#FFFDFD] p-2 sm:h-64 sm:min-h-0 sm:max-h-none sm:p-3 md:h-72">
+                            <img
+                              src={urlImagen}
+                              alt={`Referencia de ${nombreVisible}`}
+                              className="h-full w-full object-contain object-center transition duration-200 group-active:scale-[0.99] md:group-hover:scale-[1.02]"
+                              loading="lazy"
+                            />
+                          </div>
 
-                      <span className="shrink-0 rounded-full bg-[#F0EBF6] px-2.5 py-1 text-[10px] font-black text-[#745D8A]">
-                        {formatoNumero(variante.stock_actual)} disp.
-                      </span>
-                    </div>
-
-                    {detalle.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {detalle.map((item) => (
-                          <span
-                            key={`${variante.id_variante}-${item.clave}`}
-                            className="rounded-full bg-[#FFF3F6] px-2.5 py-1 text-[10px] font-black text-[#8E596B]"
-                          >
-                            {item.etiqueta}: {item.valor}
+                          <span className="absolute bottom-3 right-3 rounded-full bg-[#392F33]/75 px-3 py-1.5 text-[10px] font-black text-white shadow-lg backdrop-blur-sm">
+                            Tocar para ampliar
                           </span>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="mt-4 flex items-end justify-between gap-3 border-t border-[#F4EAED] pt-3">
-                      <div>
-                        {tieneOfertaActiva(producto) &&
-                          precioFinal !== precioVariante && (
-                            <p className="text-[10px] font-bold text-[#B5A1A8] line-through">
-                              {formatoMoneda(precioVariante)}
+                        </button>
+                      ) : (
+                        <div className="flex h-28 items-center justify-center border-b border-[#F4EAED] bg-[#FFFAFB] px-4 text-center sm:h-32">
+                          <div>
+                            <Package
+                              size={30}
+                              className="mx-auto text-[#D9C9CF]"
+                            />
+                            <p className="mt-2 text-xs font-bold text-[#A8959C]">
+                              Sin imagen de referencia
                             </p>
-                          )}
-                        <p className="text-lg font-black text-[#B85F7D]">
-                          {formatoMoneda(precioFinal)}
-                        </p>
-                      </div>
+                          </div>
+                        </div>
+                      )}
 
-                      <span className="inline-flex items-center gap-1 text-xs font-black text-[#745D8A]">
-                        Seleccionar
-                        <CheckCircle size={15} />
-                      </span>
-                    </div>
-                  </button>
-                );
-              })
-            )}
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-base font-black leading-tight text-[#392F33]">
+                              {nombreVisible}
+                            </p>
+
+                            {(variante.sku || variante.codigo_barras) && (
+                              <p className="mt-1 truncate text-[10px] font-semibold text-[#9A858D]">
+                                {variante.sku ? `SKU ${variante.sku}` : ''}
+                                {variante.sku && variante.codigo_barras
+                                  ? ' · '
+                                  : ''}
+                                {variante.codigo_barras
+                                  ? `Código ${variante.codigo_barras}`
+                                  : ''}
+                              </p>
+                            )}
+                          </div>
+
+                          <span className="shrink-0 rounded-full bg-[#F0EBF6] px-2.5 py-1 text-[10px] font-black text-[#745D8A]">
+                            {formatoNumero(variante.stock_actual)} disp.
+                          </span>
+                        </div>
+
+                        {detalle.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-1.5">
+                            {detalle.map((item) => (
+                              <span
+                                key={`${variante.id_variante}-${item.clave}`}
+                                className="rounded-full bg-[#FFF3F6] px-2.5 py-1 text-[10px] font-black text-[#8E596B]"
+                              >
+                                {item.etiqueta}: {item.valor}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="mt-4 flex items-center justify-between gap-4 border-t border-[#F4EAED] pt-3">
+                          <div className="min-w-0">
+                            {tieneOfertaActiva(producto) &&
+                              precioFinal !== precioVariante && (
+                                <p className="text-[10px] font-bold text-[#B5A1A8] line-through">
+                                  {formatoMoneda(precioVariante)}
+                                </p>
+                              )}
+                            <p className="text-xl font-black leading-none text-[#B85F7D]">
+                              {formatoMoneda(precioFinal)}
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => onSeleccionar(producto, variante)}
+                            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#745D8A] px-4 py-2.5 text-xs font-black text-white shadow-sm transition active:scale-[0.98] md:hover:bg-[#654F7A]"
+                          >
+                            Seleccionar
+                            <CheckCircle size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Visor de imagen a pantalla completa. */}
+      {imagenAmpliada && (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-2 sm:p-6"
+          onClick={() => setImagenAmpliada(null)}
+        >
+          <div
+            className="relative flex h-full w-full max-w-5xl items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={imagenAmpliada.url}
+              alt={imagenAmpliada.nombre}
+              className="max-h-full max-w-full object-contain"
+            />
+
+            <button
+              type="button"
+              onClick={() => setImagenAmpliada(null)}
+              className="absolute right-2 top-[max(0.5rem,env(safe-area-inset-top))] inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-[#392F33] shadow-xl"
+              aria-label="Cerrar imagen ampliada"
+            >
+              <X size={22} />
+            </button>
+
+            <div className="absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] rounded-2xl bg-black/65 px-4 py-3 text-center text-sm font-black text-white backdrop-blur-sm sm:inset-x-auto sm:max-w-lg">
+              {imagenAmpliada.nombre}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

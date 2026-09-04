@@ -23,6 +23,8 @@ import {
   MapPin,
   BadgeDollarSign,
   Eye,
+  Camera,
+  ImagePlus,
 } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
@@ -37,7 +39,8 @@ import {
 const formAsignarInicial = {
   id_sucursal: '',
   id_producto: '',
-  id_proveedor: '',
+  // PROVEEDOR DESHABILITADO TEMPORALMENTE
+  // id_proveedor: '',
   stock_inicial: '',
   stock_minimo: '',
   ubicacion: '',
@@ -52,7 +55,8 @@ const formMovimientoInicial = {
   id_sucursal: '',
   id_producto: '',
   id_variante: '',
-  id_proveedor: '',
+  // PROVEEDOR DESHABILITADO TEMPORALMENTE
+  // id_proveedor: '',
   id_lote: '',
   tipo_movimiento: 'ENTRADA',
   cantidad: '',
@@ -67,7 +71,15 @@ const formMovimientoInicial = {
 
 const formEditarLoteInicial = {
   id_lote: '',
-  id_proveedor: '',
+  id_variante: '',
+  nombre_variante: '',
+  // SKU DESHABILITADO TEMPORALMENTE
+  // sku: '',
+  codigo_barras_variante: '',
+  precio_venta_variante: '',
+  atributos_variante: {},
+  // PROVEEDOR DESHABILITADO TEMPORALMENTE
+  // id_proveedor: '',
   lote: '',
   fecha_caducidad: '',
   precio_compra: '',
@@ -83,7 +95,8 @@ const tiposMovimiento = [
   { value: 'AJUSTE_NEGATIVO', label: 'Ajuste negativo', tipo: 'salida' },
   { value: 'MERMA', label: 'Merma', tipo: 'salida' },
   { value: 'CADUCIDAD', label: 'Caducidad', tipo: 'salida' },
-  { value: 'DEVOLUCION_PROVEEDOR', label: 'Devolución proveedor', tipo: 'salida' },
+  // PROVEEDOR DESHABILITADO TEMPORALMENTE
+  // { value: 'DEVOLUCION_PROVEEDOR', label: 'Devolución proveedor', tipo: 'salida' },
 ];
 
 const movimientosEntrada = tiposMovimiento
@@ -99,7 +112,8 @@ const movimientosConLoteExistente = [
   'AJUSTE_NEGATIVO',
   'MERMA',
   'CADUCIDAD',
-  'DEVOLUCION_PROVEEDOR',
+  // PROVEEDOR DESHABILITADO TEMPORALMENTE
+  // 'DEVOLUCION_PROVEEDOR',
   'DEVOLUCION_CLIENTE',
 ];
 
@@ -132,6 +146,7 @@ const configuracionVariantesDefault = {
   modelo: false,
   aroma: false,
   capacidad: false,
+  precio: false,
   personalizados: [],
 };
 
@@ -196,11 +211,11 @@ const normalizarConfiguracionVariantes = (valor) => {
     ...origen,
     personalizados: Array.isArray(origen.personalizados)
       ? origen.personalizados
-          .map((item) => ({
-            clave: String(item?.clave || '').trim(),
-            etiqueta: String(item?.etiqueta || '').trim(),
-          }))
-          .filter((item) => item.clave && item.etiqueta)
+        .map((item) => ({
+          clave: String(item?.clave || '').trim(),
+          etiqueta: String(item?.etiqueta || '').trim(),
+        }))
+        .filter((item) => item.clave && item.etiqueta)
       : [],
   };
 };
@@ -226,7 +241,7 @@ const obtenerCamposVariantes = (configuracion) => {
 
 let consecutivoVarianteTemporal = 0;
 
-const crearVarianteInventario = (campos = []) => {
+const crearVarianteInventario = (campos = [], precioVentaBase = '') => {
   consecutivoVarianteTemporal += 1;
 
   const atributos = {};
@@ -237,23 +252,53 @@ const crearVarianteInventario = (campos = []) => {
   return {
     id_temporal: `var-${Date.now()}-${consecutivoVarianteTemporal}`,
     nombre_variante: '',
-    sku: '',
+    // SKU DESHABILITADO TEMPORALMENTE
+    // sku: '',
     codigo_barras: '',
+    precio_venta:
+      precioVentaBase !== undefined &&
+        precioVentaBase !== null &&
+        precioVentaBase !== ''
+        ? String(precioVentaBase)
+        : '',
     stock_inicial: '',
+    imagen_archivo: null,
+    imagen_preview: '',
     atributos,
   };
 };
 
 const obtenerNombreVariante = (variante, campos = []) => {
+  const nombreManual = String(variante?.nombre_variante || '').trim();
+
+  if (nombreManual) return nombreManual;
+
   const partes = campos
     .map((campo) => String(variante?.atributos?.[campo.clave] || '').trim())
     .filter(Boolean);
 
-  return (
-    String(variante?.nombre_variante || '').trim() ||
-    partes.join(' · ') ||
-    'Variante'
-  );
+  if (partes.length > 0) {
+    return partes.join(' · ');
+  }
+
+  /*
+   * Cuando el precio es la única configuración de variante no existen
+   * atributos estructurales (talla, color, etc.). En ese caso utilizamos
+   * el precio como etiqueta visible de la variante.
+   */
+  const precio = Number(variante?.precio_venta);
+
+  if (
+    variante?.precio_venta !== undefined &&
+    variante?.precio_venta !== null &&
+    variante?.precio_venta !== '' &&
+    Number.isFinite(precio) &&
+    precio >= 0
+  ) {
+    return `Precio $${precio.toFixed(2)}`;
+  }
+
+  return 'Variante';
 };
 
 const obtenerEtiquetaVarianteGuardada = (variante) => {
@@ -261,8 +306,8 @@ const obtenerEtiquetaVarianteGuardada = (variante) => {
 
   const atributos =
     variante.atributos &&
-    typeof variante.atributos === 'object' &&
-    !Array.isArray(variante.atributos)
+      typeof variante.atributos === 'object' &&
+      !Array.isArray(variante.atributos)
       ? variante.atributos
       : {};
 
@@ -281,7 +326,8 @@ const obtenerEtiquetaVarianteGuardada = (variante) => {
     ]
       .filter(Boolean)
       .join(' · ') ||
-    variante.sku ||
+    // SKU DESHABILITADO TEMPORALMENTE
+    // variante.sku ||
     `Variante #${variante.id_variante || ''}`
   );
 };
@@ -474,7 +520,8 @@ export default function Inventario() {
 
   const [sucursales, setSucursales] = useState([]);
   const [productos, setProductos] = useState([]);
-  const [proveedores, setProveedores] = useState([]);
+  // PROVEEDOR DESHABILITADO TEMPORALMENTE
+  // const [proveedores, setProveedores] = useState([]);
   const [inventario, setInventario] = useState([]);
   const [movimientos, setMovimientos] = useState([]);
   const [bajoStock, setBajoStock] = useState([]);
@@ -551,6 +598,22 @@ export default function Inventario() {
     });
   }, [inventario, categoriaSeleccionada]);
 
+  const obtenerEtiquetaVarianteConPrecio = (variante) => {
+    if (!variante) return 'Variante';
+
+    const etiquetaBase = obtenerEtiquetaVarianteGuardada(variante);
+    const precio =
+      variante.precio_venta !== null &&
+        variante.precio_venta !== undefined &&
+        variante.precio_venta !== ''
+        ? ` · ${formatoMoneda(variante.precio_venta)}`
+        : '';
+
+    const stock = ` · Stock: ${formatoNumero(variante.stock_actual || 0)}`;
+
+    return `${etiquetaBase}${precio}${stock}`;
+  };
+
   const productosSinInventario = useMemo(() => {
     const productosInventario = new Set(
       inventario.map((item) => Number(item.id_producto))
@@ -607,6 +670,10 @@ export default function Inventario() {
   const camposVariantesAsignacion = useMemo(
     () => obtenerCamposVariantes(configuracionVariantesAsignacion),
     [configuracionVariantesAsignacion]
+  );
+
+  const asignacionUsaPrecioPorVariante = esVerdadero(
+    configuracionVariantesAsignacion?.precio
   );
 
   const productoMovimientoSeleccionado = useMemo(() => {
@@ -767,6 +834,7 @@ export default function Inventario() {
     }
   };
 
+  /* PROVEEDOR DESHABILITADO TEMPORALMENTE
   const cargarProveedores = async () => {
     try {
       const { data } = await api.get('/proveedores?activos=true');
@@ -784,6 +852,7 @@ export default function Inventario() {
       });
     }
   };
+  */
 
   const cargarInventario = async ({
     texto = null,
@@ -1118,7 +1187,8 @@ export default function Inventario() {
     if (usuario) {
       cargarSucursales();
       cargarProductos();
-      cargarProveedores();
+      // PROVEEDOR DESHABILITADO TEMPORALMENTE
+      // cargarProveedores();
     }
   }, [usuario]);
 
@@ -1250,7 +1320,8 @@ export default function Inventario() {
       id_producto: loteItem.id_producto || productoInventario?.id_producto || '',
       id_variante: loteItem.id_variante || '',
       id_lote: loteItem.id_lote || '',
-      id_proveedor: loteItem.id_proveedor || '',
+      // PROVEEDOR DESHABILITADO TEMPORALMENTE
+      // id_proveedor: loteItem.id_proveedor || '',
       tipo_movimiento: tipo,
       cantidad: loteItem.stock_actual || '',
       stock_minimo: productoInventario?.stock_minimo || '',
@@ -1278,9 +1349,76 @@ export default function Inventario() {
   const abrirEditarLote = (loteItem) => {
     setLoteEditando(loteItem);
 
+    const camposVariante = obtenerCamposVariantes(
+      productoLotes?.configuracion_variantes
+    );
+
+    let atributosOrigen = loteItem?.atributos;
+
+    if (
+      typeof atributosOrigen === 'string' &&
+      atributosOrigen.trim()
+    ) {
+      try {
+        atributosOrigen = JSON.parse(atributosOrigen);
+      } catch {
+        atributosOrigen = {};
+      }
+    }
+
+    if (
+      !atributosOrigen ||
+      typeof atributosOrigen !== 'object' ||
+      Array.isArray(atributosOrigen)
+    ) {
+      atributosOrigen = {};
+    }
+
+    const atributosVariante = {};
+
+    camposVariante.forEach((campo) => {
+      atributosVariante[campo.clave] = String(
+        loteItem?.[campo.clave] ??
+        atributosOrigen?.[campo.clave] ??
+        ''
+      );
+    });
+
+    const nombreGeneradoActual = camposVariante
+      .map((campo) =>
+        String(
+          atributosVariante?.[campo.clave] || ''
+        ).trim()
+      )
+      .filter(Boolean)
+      .join(' · ');
+
+    const nombreGuardado = String(
+      loteItem.nombre_variante || ''
+    ).trim();
+
+    const nombreAlternativo =
+      nombreGuardado &&
+        nombreGuardado !== nombreGeneradoActual
+        ? nombreGuardado
+        : '';
+
     setFormEditarLote({
       id_lote: loteItem.id_lote || '',
-      id_proveedor: loteItem.id_proveedor || '',
+      id_variante: loteItem.id_variante || '',
+      nombre_variante: nombreAlternativo,
+      // SKU DESHABILITADO TEMPORALMENTE
+      // sku: loteItem.sku || '',
+      codigo_barras_variante:
+        loteItem.codigo_barras_variante || '',
+      precio_venta_variante:
+        loteItem.precio_venta_variante !== null &&
+          loteItem.precio_venta_variante !== undefined
+          ? String(loteItem.precio_venta_variante)
+          : '',
+      atributos_variante: atributosVariante,
+      // PROVEEDOR DESHABILITADO TEMPORALMENTE
+      // id_proveedor: loteItem.id_proveedor || '',
       lote: loteItem.lote || '',
       fecha_caducidad: loteItem.fecha_caducidad
         ? String(loteItem.fecha_caducidad).slice(0, 10)
@@ -1312,6 +1450,16 @@ export default function Inventario() {
     }));
   };
 
+  const actualizarAtributoVarianteEditarLote = (clave, valor) => {
+    setFormEditarLote((prev) => ({
+      ...prev,
+      atributos_variante: {
+        ...(prev.atributos_variante || {}),
+        [clave]: valor,
+      },
+    }));
+  };
+
   const guardarEditarLote = async (e) => {
     e.preventDefault();
 
@@ -1331,6 +1479,62 @@ export default function Inventario() {
         text: 'Ingresa el número o clave del lote.',
       });
       return;
+    }
+
+    const editaVariante =
+      esVerdadero(productoLotes?.usa_variantes) &&
+      Boolean(loteEditando?.id_variante);
+
+    const configuracionVarianteEdicion =
+      normalizarConfiguracionVariantes(
+        productoLotes?.configuracion_variantes
+      );
+
+    const camposVarianteEdicion = editaVariante
+      ? obtenerCamposVariantes(
+        productoLotes?.configuracion_variantes
+      )
+      : [];
+
+    if (editaVariante) {
+      const atributosIncompletos =
+        camposVarianteEdicion.filter(
+          (campo) =>
+            !String(
+              formEditarLote.atributos_variante?.[
+              campo.clave
+              ] || ''
+            ).trim()
+        );
+
+      if (atributosIncompletos.length > 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Variante incompleta',
+          text: `Completa: ${atributosIncompletos
+            .map((campo) => campo.etiqueta)
+            .join(', ')}.`,
+        });
+        return;
+      }
+
+      if (
+        esVerdadero(configuracionVarianteEdicion.precio) &&
+        (
+          formEditarLote.precio_venta_variante === '' ||
+          !Number.isFinite(
+            Number(formEditarLote.precio_venta_variante)
+          ) ||
+          Number(formEditarLote.precio_venta_variante) < 0
+        )
+      ) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Precio de variante inválido',
+          text: 'Captura un precio de venta válido para la variante.',
+        });
+        return;
+      }
     }
 
     if (
@@ -1363,10 +1567,51 @@ export default function Inventario() {
     try {
       setGuardando(true);
 
+      const atributosVariantePayload = {};
+
+      camposVarianteEdicion.forEach((campo) => {
+        atributosVariantePayload[campo.clave] =
+          String(
+            formEditarLote.atributos_variante?.[
+            campo.clave
+            ] || ''
+          ).trim();
+      });
+
+      const variantePayload = editaVariante
+        ? {
+          id_variante: Number(loteEditando.id_variante),
+          nombre_variante:
+            String(
+              formEditarLote.nombre_variante || ''
+            ).trim() || null,
+          // SKU DESHABILITADO TEMPORALMENTE
+          // sku:
+          //   String(formEditarLote.sku || '').trim() ||
+          //   null,
+          codigo_barras:
+            String(
+              formEditarLote.codigo_barras_variante || ''
+            ).trim() || null,
+          atributos: atributosVariantePayload,
+          ...(esVerdadero(
+            configuracionVarianteEdicion.precio
+          )
+            ? {
+              precio_venta: Number(
+                formEditarLote.precio_venta_variante
+              ),
+            }
+            : {}),
+        }
+        : null;
+
       const payload = {
-        id_proveedor: formEditarLote.id_proveedor
-          ? Number(formEditarLote.id_proveedor)
-          : null,
+        variante: variantePayload,
+        // PROVEEDOR DESHABILITADO TEMPORALMENTE
+        // id_proveedor: formEditarLote.id_proveedor
+        //   ? Number(formEditarLote.id_proveedor)
+        //   : null,
         lote: formEditarLote.lote.trim(),
         fecha_caducidad: formEditarLote.fecha_caducidad || null,
         precio_compra: formEditarLote.precio_compra
@@ -1457,8 +1702,14 @@ export default function Inventario() {
         );
 
         const usaVariantes = esVerdadero(productoSeleccionado?.usa_variantes);
-        const camposVariantes = obtenerCamposVariantes(
+        const configuracionVariantesProducto = normalizarConfiguracionVariantes(
           productoSeleccionado?.configuracion_variantes
+        );
+        const camposVariantes = obtenerCamposVariantes(
+          configuracionVariantesProducto
+        );
+        const usaPrecioPorVariante = esVerdadero(
+          configuracionVariantesProducto?.precio
         );
 
         return {
@@ -1467,12 +1718,17 @@ export default function Inventario() {
           id_producto: value,
           precio_compra:
             productoSeleccionado?.precio_compra !== null &&
-            productoSeleccionado?.precio_compra !== undefined
+              productoSeleccionado?.precio_compra !== undefined
               ? String(productoSeleccionado.precio_compra)
               : '',
           variantes:
-            usaVariantes && camposVariantes.length
-              ? [crearVarianteInventario(camposVariantes)]
+            usaVariantes && (camposVariantes.length > 0 || usaPrecioPorVariante)
+              ? [
+                crearVarianteInventario(
+                  camposVariantes,
+                  productoSeleccionado?.precio_venta ?? ''
+                ),
+              ]
               : [],
         };
       }
@@ -1489,7 +1745,10 @@ export default function Inventario() {
       ...prev,
       variantes: [
         ...(prev.variantes || []),
-        crearVarianteInventario(camposVariantesAsignacion),
+        crearVarianteInventario(
+          camposVariantesAsignacion,
+          productoAsignacionSeleccionado?.precio_venta ?? ''
+        ),
       ],
     }));
   };
@@ -1515,12 +1774,12 @@ export default function Inventario() {
       variantes: (prev.variantes || []).map((variante) =>
         variante.id_temporal === idTemporal
           ? {
-              ...variante,
-              atributos: {
-                ...(variante.atributos || {}),
-                [clave]: valor,
-              },
-            }
+            ...variante,
+            atributos: {
+              ...(variante.atributos || {}),
+              [clave]: valor,
+            },
+          }
           : variante
       ),
     }));
@@ -1531,6 +1790,72 @@ export default function Inventario() {
       ...prev,
       variantes: (prev.variantes || []).filter(
         (variante) => variante.id_temporal !== idTemporal
+      ),
+    }));
+  };
+
+  const seleccionarImagenVarianteAsignacion = (idTemporal, archivo) => {
+    if (!archivo) return;
+
+    const tiposPermitidos = ['image/jpeg', 'image/png', 'image/webp'];
+
+    if (!tiposPermitidos.includes(archivo.type)) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Imagen no válida',
+        text: 'Usa una imagen JPG, PNG o WEBP.',
+      });
+      return;
+    }
+
+    if (archivo.size > 12 * 1024 * 1024) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Imagen demasiado grande',
+        text: 'La fotografía debe pesar máximo 12 MB.',
+      });
+      return;
+    }
+
+    const lector = new FileReader();
+
+    lector.onload = () => {
+      setFormAsignar((prev) => ({
+        ...prev,
+        variantes: (prev.variantes || []).map((variante) =>
+          variante.id_temporal === idTemporal
+            ? {
+              ...variante,
+              imagen_archivo: archivo,
+              imagen_preview: String(lector.result || ''),
+            }
+            : variante
+        ),
+      }));
+    };
+
+    lector.onerror = () => {
+      Swal.fire({
+        icon: 'error',
+        title: 'No se pudo leer la imagen',
+        text: 'Intenta tomar o seleccionar nuevamente la fotografía.',
+      });
+    };
+
+    lector.readAsDataURL(archivo);
+  };
+
+  const quitarImagenVarianteAsignacion = (idTemporal) => {
+    setFormAsignar((prev) => ({
+      ...prev,
+      variantes: (prev.variantes || []).map((variante) =>
+        variante.id_temporal === idTemporal
+          ? {
+            ...variante,
+            imagen_archivo: null,
+            imagen_preview: '',
+          }
+          : variante
       ),
     }));
   };
@@ -1547,7 +1872,8 @@ export default function Inventario() {
       if (name === 'id_producto') {
         cambios.id_variante = '';
         cambios.id_lote = '';
-        cambios.id_proveedor = '';
+        // PROVEEDOR DESHABILITADO TEMPORALMENTE
+        // cambios.id_proveedor = '';
         cambios.cantidad = '';
         cambios.lote = '';
         cambios.fecha_caducidad = '';
@@ -1556,7 +1882,8 @@ export default function Inventario() {
 
       if (name === 'id_variante') {
         cambios.id_lote = '';
-        cambios.id_proveedor = '';
+        // PROVEEDOR DESHABILITADO TEMPORALMENTE
+        // cambios.id_proveedor = '';
         cambios.lote = '';
         cambios.fecha_caducidad = '';
         cambios.precio_compra = '';
@@ -1564,7 +1891,8 @@ export default function Inventario() {
 
       if (name === 'tipo_movimiento') {
         cambios.id_lote = '';
-        cambios.id_proveedor = '';
+        // PROVEEDOR DESHABILITADO TEMPORALMENTE
+        // cambios.id_proveedor = '';
         cambios.cantidad = '';
         cambios.lote = '';
         cambios.fecha_caducidad = '';
@@ -1579,7 +1907,8 @@ export default function Inventario() {
         if (loteSeleccionado) {
           cambios.id_variante =
             loteSeleccionado.id_variante || cambios.id_variante || '';
-          cambios.id_proveedor = loteSeleccionado.id_proveedor || '';
+          // PROVEEDOR DESHABILITADO TEMPORALMENTE
+          // cambios.id_proveedor = loteSeleccionado.id_proveedor || '';
           cambios.lote = loteSeleccionado.lote || '';
           cambios.fecha_caducidad = loteSeleccionado.fecha_caducidad
             ? String(loteSeleccionado.fecha_caducidad).slice(0, 10)
@@ -1590,7 +1919,8 @@ export default function Inventario() {
             cambios.cantidad = loteSeleccionado.stock_actual || '';
           }
         } else {
-          cambios.id_proveedor = '';
+          // PROVEEDOR DESHABILITADO TEMPORALMENTE
+          // cambios.id_proveedor = '';
           cambios.lote = '';
           cambios.fecha_caducidad = '';
           cambios.precio_compra = '';
@@ -1617,11 +1947,18 @@ export default function Inventario() {
     let variantesPayload = [];
 
     if (asignacionUsaVariantes) {
-      if (!camposVariantesAsignacion.length) {
+      /*
+       * Precio por variante puede ser la única identidad configurada.
+       * Solo bloqueamos cuando no existe ningún atributo estructural NI precio.
+       */
+      if (
+        !camposVariantesAsignacion.length &&
+        !asignacionUsaPrecioPorVariante
+      ) {
         Swal.fire({
           icon: 'warning',
           title: 'Configuración incompleta',
-          text: 'El producto usa variantes, pero no tiene tipos de variante configurados.',
+          text: 'El producto usa variantes, pero no tiene atributos ni precio por variante configurados.',
         });
         return;
       }
@@ -1642,11 +1979,21 @@ export default function Inventario() {
 
         const cantidad = Number(variante.stock_inicial);
 
+        const precioVenta = Number(variante.precio_venta);
+        const precioValido =
+          !asignacionUsaPrecioPorVariante ||
+          (
+            variante.precio_venta !== '' &&
+            Number.isFinite(precioVenta) &&
+            precioVenta >= 0
+          );
+
         return (
           !atributosCompletos ||
           variante.stock_inicial === '' ||
           !Number.isFinite(cantidad) ||
-          cantidad < 0
+          cantidad < 0 ||
+          !precioValido
         );
       });
 
@@ -1654,18 +2001,40 @@ export default function Inventario() {
         Swal.fire({
           icon: 'warning',
           title: 'Revisa las variantes',
-          text: 'Completa todos los atributos configurados y captura una cantidad válida en cada variante.',
+          text: asignacionUsaPrecioPorVariante
+            ? camposVariantesAsignacion.length > 0
+              ? 'Completa los atributos, la cantidad y un precio de venta válido para cada variante.'
+              : 'Captura una cantidad y un precio de venta válido para cada variante.'
+            : 'Completa todos los atributos configurados y captura una cantidad válida en cada variante.',
         });
         return;
       }
 
-      const clavesVariantes = formAsignar.variantes.map((variante) =>
-        normalizarTexto(
+      const clavesVariantes = formAsignar.variantes.map((variante) => {
+        const claveAtributos = normalizarTexto(
           camposVariantesAsignacion
             .map((campo) => variante.atributos?.[campo.clave])
             .join('|')
-        )
-      );
+        );
+
+        if (claveAtributos) {
+          return `atributos:${claveAtributos}`;
+        }
+
+        /*
+         * Si no hay talla/color/etc., el precio es la identidad de la variante.
+         * Así $100 y $200 son variantes distintas, pero dos filas de $100
+         * sí se consideran duplicadas.
+         */
+        if (asignacionUsaPrecioPorVariante) {
+          const precio = Number(variante.precio_venta);
+          return Number.isFinite(precio)
+            ? `precio:${precio.toFixed(2)}`
+            : `precio:${String(variante.precio_venta || '').trim()}`;
+        }
+
+        return 'sin-identidad';
+      });
 
       const tieneDuplicadas =
         new Set(clavesVariantes).size !== clavesVariantes.length;
@@ -1674,7 +2043,10 @@ export default function Inventario() {
         Swal.fire({
           icon: 'warning',
           title: 'Variantes duplicadas',
-          text: 'Hay dos filas con la misma combinación de atributos.',
+          text:
+            camposVariantesAsignacion.length === 0 && asignacionUsaPrecioPorVariante
+              ? 'Hay dos variantes con el mismo precio. Usa un precio diferente para identificar cada variante.'
+              : 'Hay dos filas con la misma combinación de atributos.',
         });
         return;
       }
@@ -1692,8 +2064,12 @@ export default function Inventario() {
             variante,
             camposVariantesAsignacion
           ),
-          sku: String(variante.sku || '').trim() || null,
+          // SKU DESHABILITADO TEMPORALMENTE
+          // sku: String(variante.sku || '').trim() || null,
           codigo_barras: String(variante.codigo_barras || '').trim() || null,
+          precio_venta: asignacionUsaPrecioPorVariante
+            ? Number(variante.precio_venta)
+            : null,
           stock_inicial: Number(variante.stock_inicial || 0),
           talla: atributos.talla || null,
           color: atributos.color || null,
@@ -1755,9 +2131,10 @@ export default function Inventario() {
       const payload = {
         id_sucursal: Number(formAsignar.id_sucursal),
         id_producto: Number(formAsignar.id_producto),
-        id_proveedor: formAsignar.id_proveedor
-          ? Number(formAsignar.id_proveedor)
-          : null,
+        // PROVEEDOR DESHABILITADO TEMPORALMENTE
+        // id_proveedor: formAsignar.id_proveedor
+        //   ? Number(formAsignar.id_proveedor)
+        //   : null,
         stock_inicial: stockInicial,
         stock_minimo: Number(formAsignar.stock_minimo || 0),
         ubicacion: formAsignar.ubicacion || null,
@@ -1776,13 +2153,65 @@ export default function Inventario() {
       const { data } = await api.post('/inventario/asignar', payload);
 
       if (data.ok) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Inventario asignado',
-          text: data.mensaje,
-          timer: 1400,
-          showConfirmButton: false,
-        });
+        let imagenesFallidas = 0;
+        let imagenesSubidas = 0;
+
+        if (asignacionUsaVariantes) {
+          const variantesGuardadas = Array.isArray(data.variantes)
+            ? data.variantes
+            : [];
+
+          for (let indice = 0; indice < formAsignar.variantes.length; indice += 1) {
+            const varianteLocal = formAsignar.variantes[indice];
+            const archivo = varianteLocal?.imagen_archivo;
+
+            if (!archivo) continue;
+
+            const idVariante = Number(variantesGuardadas[indice]?.id_variante || 0);
+
+            if (!Number.isInteger(idVariante) || idVariante <= 0) {
+              imagenesFallidas += 1;
+              continue;
+            }
+
+            try {
+              const formData = new FormData();
+              formData.append('imagen', archivo);
+
+              await api.post(
+                `/inventario/variantes/${idVariante}/imagen`,
+                formData
+              );
+
+              imagenesSubidas += 1;
+            } catch (errorImagen) {
+              console.error(
+                `No se pudo guardar la imagen de la variante ${idVariante}:`,
+                errorImagen
+              );
+              imagenesFallidas += 1;
+            }
+          }
+        }
+
+        if (imagenesFallidas > 0) {
+          await Swal.fire({
+            icon: 'warning',
+            title: 'Inventario guardado',
+            text: `${data.mensaje}. Se guardaron ${imagenesSubidas} imagen(es), pero ${imagenesFallidas} no pudieron subirse.`,
+          });
+        } else {
+          Swal.fire({
+            icon: 'success',
+            title: 'Inventario asignado',
+            text:
+              imagenesSubidas > 0
+                ? `${data.mensaje}. ${imagenesSubidas} imagen(es) de referencia guardadas.`
+                : data.mensaje,
+            timer: 1600,
+            showConfirmButton: false,
+          });
+        }
 
         cerrarModalAsignar();
         cargarInventario();
@@ -1857,9 +2286,10 @@ export default function Inventario() {
         id_variante: formMovimiento.id_variante
           ? Number(formMovimiento.id_variante)
           : null,
-        id_proveedor: formMovimiento.id_proveedor
-          ? Number(formMovimiento.id_proveedor)
-          : null,
+        // PROVEEDOR DESHABILITADO TEMPORALMENTE
+        // id_proveedor: formMovimiento.id_proveedor
+        //   ? Number(formMovimiento.id_proveedor)
+        //   : null,
         id_lote: formMovimiento.id_lote
           ? Number(formMovimiento.id_lote)
           : undefined,
@@ -1971,9 +2401,10 @@ export default function Inventario() {
     }
   };
 
-  const requiereProveedorMovimiento = movimientosPermitenNuevoLote.includes(
-    formMovimiento.tipo_movimiento
-  );
+  // PROVEEDOR DESHABILITADO TEMPORALMENTE
+  // const requiereProveedorMovimiento = movimientosPermitenNuevoLote.includes(
+  //   formMovimiento.tipo_movimiento
+  // );
 
   const exportarInventarioExcel = async () => {
     if (!idSucursal) {
@@ -2932,11 +3363,10 @@ export default function Inventario() {
                                 e.preventDefault();
                                 seleccionarSugerenciaInventario(item);
                               }}
-                              className={`flex w-full items-start justify-between gap-4 px-4 py-3 text-left transition ${
-                                seleccionado
-                                  ? 'bg-[#FFF2F5] text-[#9E4966]'
-                                  : 'text-[#5B4950] hover:bg-[#FFFAFB]'
-                              }`}
+                              className={`flex w-full items-start justify-between gap-4 px-4 py-3 text-left transition ${seleccionado
+                                ? 'bg-[#FFF2F5] text-[#9E4966]'
+                                : 'text-[#5B4950] hover:bg-[#FFFAFB]'
+                                }`}
                             >
                               <div className="min-w-0">
                                 <p className="truncate text-sm font-black">
@@ -3089,11 +3519,10 @@ export default function Inventario() {
             inventarioFiltrado.map((item) => (
               <article
                 key={item.id_inventario}
-                className={`rounded-3xl border p-4 shadow-sm ${
-                  item.bajo_stock
-                    ? 'border-amber-200 bg-amber-50/60'
-                    : 'border-[#F0E2E7] bg-white'
-                }`}
+                className={`rounded-3xl border p-4 shadow-sm ${item.bajo_stock
+                  ? 'border-amber-200 bg-amber-50/60'
+                  : 'border-[#F0E2E7] bg-white'
+                  }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -3549,11 +3978,10 @@ export default function Inventario() {
                       </div>
 
                       <div className="flex flex-wrap gap-2">
-                        <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${
-                          asignacionUsaVariantes
-                            ? 'bg-[#F0EBF6] text-[#745D8A]'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}>
+                        <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${asignacionUsaVariantes
+                          ? 'bg-[#F0EBF6] text-[#745D8A]'
+                          : 'bg-slate-100 text-slate-600'
+                          }`}>
                           {asignacionUsaVariantes ? 'Variantes' : 'Simple'}
                         </span>
 
@@ -3603,6 +4031,12 @@ export default function Inventario() {
                               {campo.etiqueta}
                             </span>
                           ))}
+
+                          {asignacionUsaPrecioPorVariante && (
+                            <span className="rounded-full bg-[#FBEAF0] px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#A84E6C] ring-1 ring-[#E6C6D1]">
+                              Precio por variante
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -3723,7 +4157,25 @@ export default function Inventario() {
                                 />
                               </div>
 
-                            
+                              {/* SKU DESHABILITADO TEMPORALMENTE
+                              <div>
+                                <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
+                                  SKU
+                                </label>
+                                <input
+                                  value={variante.sku}
+                                  onChange={(e) =>
+                                    actualizarVarianteAsignacion(
+                                      variante.id_temporal,
+                                      'sku',
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
+                                  placeholder="Opcional"
+                                />
+                              </div>
+                              */}
 
                               <div>
                                 <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
@@ -3742,6 +4194,32 @@ export default function Inventario() {
                                   placeholder="Opcional"
                                 />
                               </div>
+
+                              {asignacionUsaPrecioPorVariante && (
+                                <div>
+                                  <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
+                                    Precio de venta *
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={variante.precio_venta}
+                                    onChange={(e) =>
+                                      actualizarVarianteAsignacion(
+                                        variante.id_temporal,
+                                        'precio_venta',
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm font-black text-[#A84E6C] outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
+                                    placeholder="0.00"
+                                  />
+                                  <p className="mt-1 text-[10px] font-semibold text-[#9B858D]">
+                                    Este precio se respetará al vender esta variante.
+                                  </p>
+                                </div>
+                              )}
 
                               <div>
                                 <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
@@ -3764,6 +4242,88 @@ export default function Inventario() {
                                 />
                               </div>
                             </div>
+
+                            <div className="mt-4 rounded-2xl border border-dashed border-[#E7D4DB] bg-white p-3 sm:p-4">
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                  <p className="text-xs font-black uppercase tracking-wide text-[#745D8A]">
+                                    Imagen de referencia
+                                  </p>
+                                  <p className="mt-1 text-xs font-semibold text-[#927B84]">
+                                    Opcional. Se mostrará en el POS para identificar visualmente esta variante.
+                                  </p>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2">
+                                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[#B85F7D] px-3.5 py-2.5 text-xs font-black text-white transition hover:bg-[#A95270]">
+                                    <Camera size={16} />
+                                    Tomar foto
+                                    <input
+                                      type="file"
+                                      accept="image/jpeg,image/png,image/webp"
+                                      capture="environment"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        seleccionarImagenVarianteAsignacion(
+                                          variante.id_temporal,
+                                          e.target.files?.[0] || null
+                                        );
+                                        e.target.value = '';
+                                      }}
+                                    />
+                                  </label>
+
+                                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[#E7D4DB] bg-[#FFF9FA] px-3.5 py-2.5 text-xs font-black text-[#745D8A] transition hover:bg-[#F7EEF1]">
+                                    <ImagePlus size={16} />
+                                    Subir imagen
+                                    <input
+                                      type="file"
+                                      accept="image/jpeg,image/png,image/webp"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        seleccionarImagenVarianteAsignacion(
+                                          variante.id_temporal,
+                                          e.target.files?.[0] || null
+                                        );
+                                        e.target.value = '';
+                                      }}
+                                    />
+                                  </label>
+                                </div>
+                              </div>
+
+                              {variante.imagen_preview && (
+                                <div className="mt-3 flex flex-col gap-3 rounded-2xl bg-[#FFFAFB] p-3 sm:flex-row sm:items-center">
+                                  <img
+                                    src={variante.imagen_preview}
+                                    alt={`Referencia de ${obtenerNombreVariante(
+                                      variante,
+                                      camposVariantesAsignacion
+                                    )}`}
+                                    className="h-32 w-full rounded-xl border border-[#EEDFE4] object-cover sm:h-28 sm:w-36"
+                                  />
+
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-black text-[#49383F]">
+                                      {variante.imagen_archivo?.name || 'Fotografía capturada'}
+                                    </p>
+                                    <p className="mt-1 text-xs font-semibold text-[#927B84]">
+                                      Esta es la imagen que verá el cajero al seleccionar la variante.
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        quitarImagenVarianteAsignacion(variante.id_temporal)
+                                      }
+                                      className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-xs font-black text-red-600 transition hover:bg-red-100"
+                                    >
+                                      <X size={14} />
+                                      Quitar imagen
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         ))
                       )}
@@ -3780,6 +4340,7 @@ export default function Inventario() {
                   </div>
                 )}
 
+                {/* PROVEEDOR DESHABILITADO TEMPORALMENTE
                 <div className="md:col-span-2">
                   <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Proveedor
@@ -3801,6 +4362,7 @@ export default function Inventario() {
                     ))}
                   </select>
                 </div>
+                */}
 
                 {!asignacionUsaVariantes && (
                   <div>
@@ -4016,19 +4578,15 @@ export default function Inventario() {
                     >
                       <option value="">Selecciona la variante...</option>
                       {variantesMovimientoDisponibles.map((variante) => (
-                        <option
-                          key={variante.id_variante}
-                          value={variante.id_variante}
-                        >
-                          {obtenerEtiquetaVarianteGuardada(variante)} · Stock:{' '}
-                          {formatoNumero(variante.stock_actual)}
+                        <option key={variante.id_variante} value={variante.id_variante}>
+                          {obtenerEtiquetaVarianteConPrecio(variante)}
                         </option>
                       ))}
                     </select>
 
                     {varianteMovimientoSeleccionada && (
                       <p className="mt-1 text-xs font-semibold text-[#8B7A80]">
-                        SKU: {varianteMovimientoSeleccionada.sku || '—'} · Código:{' '}
+                      
                         {varianteMovimientoSeleccionada.codigo_barras || '—'} ·
                         Stock de variante:{' '}
                         {formatoNumero(varianteMovimientoSeleccionada.stock_actual)}
@@ -4055,6 +4613,7 @@ export default function Inventario() {
                   </select>
                 </div>
 
+                {/* PROVEEDOR DESHABILITADO TEMPORALMENTE
                 {requiereProveedorMovimiento && (
                   <div>
                     <label className="block text-sm font-bold text-[#5B4950] mb-2">
@@ -4078,6 +4637,7 @@ export default function Inventario() {
                     </select>
                   </div>
                 )}
+                */}
 
                 {movimientosConLoteExistente.includes(formMovimiento.tipo_movimiento) && (
                   <div>
@@ -4108,7 +4668,7 @@ export default function Inventario() {
                             !movimientoUsaVariantes ||
                             !formMovimiento.id_variante ||
                             Number(l.id_variante) ===
-                              Number(formMovimiento.id_variante)
+                            Number(formMovimiento.id_variante)
                         )
                         .filter((l) => Number(l.stock_actual) > 0)
                         .map((loteItem) => (
@@ -4144,11 +4704,13 @@ export default function Inventario() {
                           Lote seleccionado: {formMovimiento.lote || '—'}
                         </p>
                         <p className="text-[#8B7A80] mt-1">
+                          {/* PROVEEDOR DESHABILITADO TEMPORALMENTE
                           Proveedor:{' '}
                           <span className="font-semibold text-[#5B4950]">
                             {proveedores.find((p) => Number(p.id_proveedor) === Number(formMovimiento.id_proveedor))?.nombre || 'Sin proveedor'}
                           </span>
                           <br />
+                          */}
                           Caducidad:{' '}
                           <span className="font-semibold text-[#5B4950]">
                             {formMovimiento.fecha_caducidad
@@ -4353,7 +4915,7 @@ export default function Inventario() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[1350px]">
+                  <table className="w-full min-w-[1200px]">
                     <thead className="bg-[#FFFAFB] border-b border-[#F0E2E7]">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
@@ -4371,9 +4933,11 @@ export default function Inventario() {
                         <th className="px-4 py-3 text-right text-xs font-bold text-[#8B7A80] uppercase">
                           Precio compra
                         </th>
+                        {/* PROVEEDOR DESHABILITADO TEMPORALMENTE
                         <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Proveedor
                         </th>
+                        */}
                         <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Compra
                         </th>
@@ -4418,9 +4982,11 @@ export default function Inventario() {
                             {formatoMoneda(loteItem.precio_compra)}
                           </td>
 
+                          {/* PROVEEDOR DESHABILITADO TEMPORALMENTE
                           <td className="px-4 py-3 text-[#755F67]">
                             {loteItem.proveedor || 'Sin proveedor'}
                           </td>
+                          */}
 
                           <td className="px-4 py-3 text-[#755F67]">
                             {loteItem.folio_compra || '—'}
@@ -4517,11 +5083,144 @@ export default function Inventario() {
                 <div className="md:col-span-2 rounded-2xl bg-amber-50 border border-amber-100 p-4 text-amber-800 text-sm">
                   <p className="font-bold">Nota</p>
                   <p>
-                    Puedes editar los datos administrativos, la ubicación y el stock del lote.
-                    Si modificas el stock, el sistema registrará automáticamente un movimiento
-                    de ajuste para conservar el historial.
+                    Puedes editar la información de la variante asociada, los datos administrativos,
+                    la ubicación y el stock del lote. La variante conserva el mismo identificador,
+                    por lo que los movimientos y ventas relacionados siguen apuntando al mismo registro.
                   </p>
                 </div>
+
+                {esVerdadero(productoLotes?.usa_variantes) &&
+                  loteEditando?.id_variante && (
+                    <div className="md:col-span-2 rounded-2xl border border-[#E8DCE1] bg-[#FFFAFB] p-4 sm:p-5">
+                      <div className="flex flex-col gap-1">
+                        <p className="text-sm font-black text-[#49383F]">
+                          Variante asociada
+                        </p>
+                        <p className="text-xs font-semibold leading-relaxed text-[#927B84]">
+                          Edita los atributos de esta variante. Los cambios se reflejarán en todos los lotes y existencias que usan la misma variante.
+                        </p>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {obtenerCamposVariantes(
+                          productoLotes?.configuracion_variantes
+                        ).map((campo) => (
+                          <div key={`editar-lote-variante-${campo.clave}`}>
+                            <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
+                              {campo.etiqueta} *
+                            </label>
+
+                            {campo.tipo === 'select' ? (
+                              <select
+                                value={
+                                  formEditarLote.atributos_variante?.[
+                                  campo.clave
+                                  ] || ''
+                                }
+                                onChange={(e) =>
+                                  actualizarAtributoVarianteEditarLote(
+                                    campo.clave,
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
+                              >
+                                <option value="">Selecciona...</option>
+                                {(campo.opciones || []).map((opcion) => (
+                                  <option key={opcion} value={opcion}>
+                                    {opcion}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                value={
+                                  formEditarLote.atributos_variante?.[
+                                  campo.clave
+                                  ] || ''
+                                }
+                                onChange={(e) =>
+                                  actualizarAtributoVarianteEditarLote(
+                                    campo.clave,
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
+                                placeholder={
+                                  campo.placeholder || campo.etiqueta
+                                }
+                              />
+                            )}
+                          </div>
+                        ))}
+
+                        <div>
+                          <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
+                            Nombre alternativo
+                          </label>
+                          <input
+                            name="nombre_variante"
+                            value={formEditarLote.nombre_variante}
+                            onChange={handleEditarLoteChange}
+                            className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
+                            placeholder="Opcional; se genera con los atributos"
+                          />
+                        </div>
+
+                        {/* SKU DESHABILITADO TEMPORALMENTE
+                        <div>
+                          <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
+                            SKU
+                          </label>
+                          <input
+                            name="sku"
+                            value={formEditarLote.sku}
+                            onChange={handleEditarLoteChange}
+                            className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
+                            placeholder="Opcional"
+                          />
+                        </div>
+                        */}
+
+                        <div>
+                          <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
+                            Código de barras
+                          </label>
+                          <input
+                            name="codigo_barras_variante"
+                            value={formEditarLote.codigo_barras_variante}
+                            onChange={handleEditarLoteChange}
+                            className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
+                            placeholder="Opcional"
+                          />
+                        </div>
+
+                        {esVerdadero(
+                          normalizarConfiguracionVariantes(
+                            productoLotes?.configuracion_variantes
+                          ).precio
+                        ) && (
+                            <div>
+                              <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
+                                Precio de venta *
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                name="precio_venta_variante"
+                                value={
+                                  formEditarLote.precio_venta_variante
+                                }
+                                onChange={handleEditarLoteChange}
+                                className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm font-black text-[#49383F] outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
+                                placeholder="0.00"
+                              />
+                            </div>
+                          )}
+                      </div>
+                    </div>
+                  )}
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-bold text-[#5B4950] mb-2">
@@ -4595,6 +5294,7 @@ export default function Inventario() {
                   />
                 </div>
 
+                {/* PROVEEDOR DESHABILITADO TEMPORALMENTE
                 <div className="md:col-span-2">
                   <label className="block text-sm font-bold text-[#5B4950] mb-2">
                     Proveedor
@@ -4616,6 +5316,7 @@ export default function Inventario() {
                     ))}
                   </select>
                 </div>
+                */}
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-bold text-[#5B4950] mb-2">
@@ -4689,7 +5390,7 @@ export default function Inventario() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[1050px]">
+                  <table className="w-full min-w-[900px]">
                     <thead className="bg-[#FFFAFB] border-b border-[#F0E2E7]">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
@@ -4698,9 +5399,11 @@ export default function Inventario() {
                         <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Lote
                         </th>
+                        {/* PROVEEDOR DESHABILITADO TEMPORALMENTE
                         <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Proveedor
                         </th>
+                        */}
                         <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Caducidad
                         </th>
@@ -4727,9 +5430,11 @@ export default function Inventario() {
                             {item.lote}
                           </td>
 
+                          {/* PROVEEDOR DESHABILITADO TEMPORALMENTE
                           <td className="px-4 py-3 text-[#755F67]">
                             {item.proveedor || 'Sin proveedor'}
                           </td>
+                          */}
 
                           <td className="px-4 py-3 font-bold text-red-700">
                             {item.fecha_caducidad
@@ -4934,7 +5639,7 @@ export default function Inventario() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[1150px]">
+                  <table className="w-full min-w-[1000px]">
                     <thead className="bg-[#FFFAFB] border-b border-[#F0E2E7]">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
@@ -4958,9 +5663,11 @@ export default function Inventario() {
                         <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Referencia
                         </th>
+                        {/* PROVEEDOR DESHABILITADO TEMPORALMENTE
                         <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Proveedor
                         </th>
+                        */}
                         <th className="px-4 py-3 text-left text-xs font-bold text-[#8B7A80] uppercase">
                           Usuario
                         </th>
@@ -4993,9 +5700,11 @@ export default function Inventario() {
                           <td className="px-4 py-3 text-[#755F67]">
                             {mov.referencia || '—'}
                           </td>
+                          {/* PROVEEDOR DESHABILITADO TEMPORALMENTE
                           <td className="px-4 py-3 text-[#755F67]">
                             {mov.proveedor || '—'}
                           </td>
+                          */}
                           <td className="px-4 py-3 text-[#755F67]">
                             {mov.usuario || '—'}
                           </td>

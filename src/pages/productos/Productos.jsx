@@ -34,6 +34,8 @@ const configuracionVariantesInicial = {
   modelo: false,
   aroma: false,
   capacidad: false,
+  // Especial: el precio pertenece a la variante, pero no forma parte de su identidad.
+  precio: false,
   personalizados: [],
 };
 
@@ -47,6 +49,12 @@ const tiposVariantesDisponibles = [
   { clave: 'modelo', titulo: 'Modelo / estilo', detalle: 'Slim, clásico, deportivo...' },
   { clave: 'aroma', titulo: 'Aroma / fragancia', detalle: 'Floral, cítrico, vainilla...' },
   { clave: 'capacidad', titulo: 'Capacidad / volumen', detalle: '30 ml, 50 ml, 100 ml...' },
+  {
+    clave: 'precio',
+    titulo: 'Precio por variante',
+    detalle: 'Cada variante podrá manejar su propio precio de venta.',
+    especial: true,
+  },
 ];
 
 const normalizarConfiguracionVariantes = (valor) => {
@@ -568,17 +576,17 @@ export default function Productos() {
     }
 
     if (form.usa_variantes) {
-      const tieneTipoPredeterminado = tiposVariantesDisponibles.some(
+      const tieneTipoConfigurado = tiposVariantesDisponibles.some(
         (item) => Boolean(form.configuracion_variantes?.[item.clave])
       );
       const tienePersonalizados =
         (form.configuracion_variantes?.personalizados || []).length > 0;
 
-      if (!tieneTipoPredeterminado && !tienePersonalizados) {
+      if (!tieneTipoConfigurado && !tienePersonalizados) {
         Swal.fire({
           icon: 'warning',
           title: 'Configura las variantes',
-          text: 'Selecciona al menos un tipo de variante, por ejemplo talla, color o presentación.',
+          text: 'Selecciona al menos una opción para las variantes, por ejemplo talla, color, presentación o precio por variante.',
           confirmButtonColor: '#B85F7D',
         });
         return false;
@@ -1899,3 +1907,4 @@ function OpcionControl({
     </label>
   );
 }
+  
