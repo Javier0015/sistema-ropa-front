@@ -7,6 +7,7 @@ import Inventario from '../pages/inventario/Inventario';
 import POS from '../pages/pos/POS';
 import Caja from '../pages/caja/Caja';
 import Ventas from '../pages/ventas/Ventas';
+import Devoluciones from '../pages/devoluciones/Devoluciones';
 import Proveedores from '../pages/proveedores/Proveedores';
 import Compras from '../pages/compras/Compras';
 import Usuarios from '../pages/usuarios/Usuarios';
@@ -181,6 +182,15 @@ export default function AppRouter() {
             element={
               <RoleRoute modulo="ventas">
                 <Ventas />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="devoluciones"
+            element={
+              <RoleRoute modulo="devoluciones">
+                <Devoluciones />
               </RoleRoute>
             }
           />

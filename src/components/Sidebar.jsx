@@ -24,6 +24,7 @@ import {
   Layers3,
   ChevronRight,
   ShieldCheck,
+  RefreshCcw,
 } from 'lucide-react';
 
 import { useAuth } from '../context/AuthContext';
@@ -101,6 +102,12 @@ const secciones = [
         modulo: 'ventas',
       },
       {
+        to: '/app/devoluciones',
+        label: 'Cambios / Devoluciones',
+        icon: RefreshCcw,
+        modulo: 'devoluciones',
+      },
+      {
         to: '/app/caja',
         label: 'Caja',
         icon: Wallet,
@@ -120,6 +127,7 @@ const secciones = [
       },
     ],
   },
+
 
   {
     id: 'compras',

@@ -8,6 +8,7 @@ export const permisosPorRol = {
     'caja',
     'cajas',
     'ventas',
+    'devoluciones',
     'ventas-servicios-clinicos',
     'proveedores',
     'compras',
@@ -36,6 +37,7 @@ export const permisosPorRol = {
     'caja',
     'cajas',
     'ventas',
+    'devoluciones',
     'ventas-servicios-clinicos',
     //'proveedores',
     //'compras',
@@ -61,6 +63,7 @@ export const permisosPorRol = {
     //'stock-sucursales',
     'caja',
     'ventas',
+    'devoluciones',
     'ventas-servicios-clinicos',
     'tarjetas-puntos',
     'recetas-admin',
@@ -72,21 +75,6 @@ export const permisosPorRol = {
     'compras',
     'control-sanitario',
     'catalogo-servicios-clinicos',
-  ],
-
-  DOCTOR: [
-    'doctor-perfil',
-    //'stock-sucursales',
-    'recetas',
-  ],
-
-  DOCTOR_SHADDAI: [
-    'doctor-shaddai-perfil',
-    'expedientes-clinicos',
-    'doctor-shaddai-recetas',
-    'doctor-shaddai-fila-espera',
-    /*'doctor-shaddai-laboratorio',*/
-    //'stock-sucursales',
   ],
 };
 
