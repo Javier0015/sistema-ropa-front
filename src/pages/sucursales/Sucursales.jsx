@@ -395,10 +395,7 @@ export default function Sucursales() {
             </div>
 
             <div className="min-w-0">
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF3F6] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-[#AD526F]">
-                <Sparkles size={13} />
-                Red de tiendas
-              </div>
+             
 
               <h1 className="mt-3 text-2xl font-black tracking-[-0.03em] text-[#342A2E] sm:text-3xl">
                 Sucursales

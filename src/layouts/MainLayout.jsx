@@ -8,8 +8,6 @@ import api from '../api/axios';
 const rolesDisponibles = [
   { value: 'SUPER_ADMIN', label: 'Super administrador' },
   { value: 'CAJERO', label: 'Cajero' },
-  { value: 'DOCTOR', label: 'Doctor' },
-  { value: 'DOCTOR_SHADDAI', label: 'Doctor Shaddai' },
 ];
 
 export default function MainLayout() {

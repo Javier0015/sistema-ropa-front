@@ -38,23 +38,23 @@ export const permisosPorRol = {
     'cajas',
     'ventas',
     'devoluciones',
-    'ventas-servicios-clinicos',
+    /*'ventas-servicios-clinicos',*/
     //'proveedores',
     //'compras',
     'usuarios',
     //'tarjetas-puntos',
-    'sucursales',
+    /*'sucursales',*/
     'categorias',
     'alertas',
     //'puntos',
-    'recetas-admin',
+    /*'recetas-admin',*/
     'ofertas',
-    'catalogo-admin',
-    'fila-espera',
+    /*'catalogo-admin',*/
+    /*'fila-espera',*/
     'reportes-cierre-caja',
-    'control-sanitario',
-    'catalogo-servicios-clinicos',
-    'configuracion-ticket',
+    /*'control-sanitario',*/
+   /* 'catalogo-servicios-clinicos',*/
+    /*'configuracion-ticket',*/
   ],
 
   CAJERO: [
@@ -64,17 +64,17 @@ export const permisosPorRol = {
     'caja',
     'ventas',
     'devoluciones',
-    'ventas-servicios-clinicos',
-    'tarjetas-puntos',
-    'recetas-admin',
-    'fila-espera',
+    /*'ventas-servicios-clinicos',*/
+    /*'tarjetas-puntos',*/
+    /*'recetas-admin',*/
+    /*'fila-espera',*/
     /* 'productos',*/
     'inventario',
     'categorias',
-    'proveedores',
-    'compras',
+   /* 'proveedores',*/
+   /* 'compras',
     'control-sanitario',
-    'catalogo-servicios-clinicos',
+    'catalogo-servicios-clinicos',*/
   ],
 };
 

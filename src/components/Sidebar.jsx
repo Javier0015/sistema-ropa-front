@@ -58,12 +58,7 @@ const secciones = [
     id: 'inventario',
     titulo: 'Inventario',
     links: [
-      {
-        to: '/app/productos',
-        label: 'Productos',
-        icon: Package,
-        modulo: 'productos',
-      },
+     
       {
         to: '/app/inventario',
         label: 'Inventario',
@@ -75,6 +70,12 @@ const secciones = [
         label: 'Stock por sucursal',
         icon: Search,
         modulo: 'stock-sucursales',
+      },
+       {
+        to: '/app/productos',
+        label: 'Productos',
+        icon: Package,
+        modulo: 'productos',
       },
       {
         to: '/app/categorias',

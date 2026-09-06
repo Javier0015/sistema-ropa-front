@@ -34,8 +34,6 @@ const configuracionVariantesInicial = {
   modelo: false,
   aroma: false,
   capacidad: false,
-  // Especial: el precio pertenece a la variante, pero no forma parte de su identidad.
-  precio: false,
   personalizados: [],
 };
 
@@ -49,12 +47,6 @@ const tiposVariantesDisponibles = [
   { clave: 'modelo', titulo: 'Modelo / estilo', detalle: 'Slim, clásico, deportivo...' },
   { clave: 'aroma', titulo: 'Aroma / fragancia', detalle: 'Floral, cítrico, vainilla...' },
   { clave: 'capacidad', titulo: 'Capacidad / volumen', detalle: '30 ml, 50 ml, 100 ml...' },
-  {
-    clave: 'precio',
-    titulo: 'Precio por variante',
-    detalle: 'Cada variante podrá manejar su propio precio de venta.',
-    especial: true,
-  },
 ];
 
 const normalizarConfiguracionVariantes = (valor) => {
@@ -458,6 +450,15 @@ export default function Productos() {
       }
 
       /*
+       * Al activar variantes, los precios dejan de pertenecer al producto base:
+       * se capturarán de manera independiente en cada variante.
+       */
+      if (name === 'usa_variantes' && checked) {
+        siguiente.precio_compra = '';
+        siguiente.precio_venta = '';
+      }
+
+      /*
        * Al desactivar variantes limpiamos la configuración para evitar que
        * queden atributos antiguos asociados al producto.
        */
@@ -553,26 +554,32 @@ export default function Productos() {
       return false;
     }
 
-    if (form.precio_compra !== '' && Number(form.precio_compra) < 0) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Precio inválido',
-        text: 'El precio de compra no puede ser negativo.',
-        confirmButtonColor: '#B85F7D',
-      });
+    /*
+     * Los precios base solo aplican a productos simples.
+     * En productos con variantes, compra y venta se definirán por variante.
+     */
+    if (!form.usa_variantes) {
+      if (form.precio_compra !== '' && Number(form.precio_compra) < 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Precio inválido',
+          text: 'El precio de compra no puede ser negativo.',
+          confirmButtonColor: '#B85F7D',
+        });
 
-      return false;
-    }
+        return false;
+      }
 
-    if (form.precio_venta === '' || Number(form.precio_venta) < 0) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Precio inválido',
-        text: 'Ingresa un precio de venta válido.',
-        confirmButtonColor: '#B85F7D',
-      });
+      if (form.precio_venta === '' || Number(form.precio_venta) < 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Precio inválido',
+          text: 'Ingresa un precio de venta válido.',
+          confirmButtonColor: '#B85F7D',
+        });
 
-      return false;
+        return false;
+      }
     }
 
     if (form.usa_variantes) {
@@ -586,7 +593,7 @@ export default function Productos() {
         Swal.fire({
           icon: 'warning',
           title: 'Configura las variantes',
-          text: 'Selecciona al menos una opción para las variantes, por ejemplo talla, color, presentación o precio por variante.',
+          text: 'Selecciona al menos una opción para las variantes, por ejemplo talla, color, presentación, material o modelo.',
           confirmButtonColor: '#B85F7D',
         });
         return false;
@@ -612,11 +619,16 @@ export default function Productos() {
         presentacion: form.presentacion.trim() || null,
 
         /*
-         * Se conservan los nombres actuales de precio_compra y precio_venta
-         * para no romper el controller mientras terminamos la transición.
+         * Producto simple: usa sus precios base.
+         * Producto con variantes: los precios reales se configurarán por variante.
+         * Enviamos 0 para mantener compatibilidad con el controller/BD actual.
          */
-        precio_compra: form.precio_compra ? Number(form.precio_compra) : 0,
-        precio_venta: Number(form.precio_venta),
+        precio_compra: form.usa_variantes
+          ? 0
+          : form.precio_compra
+            ? Number(form.precio_compra)
+            : 0,
+        precio_venta: form.usa_variantes ? 0 : Number(form.precio_venta),
 
         usa_variantes: Boolean(form.usa_variantes),
         configuracion_variantes: form.usa_variantes
@@ -829,10 +841,7 @@ export default function Productos() {
             </div>
 
             <div>
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF3F6] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-[#B85F7D]">
-                <Sparkles size={13} />
-                Catálogo retail
-              </div>
+             
 
               <h1 className="mt-3 text-2xl font-black tracking-[-0.03em] text-[#33292D] sm:text-3xl">
                 Productos
@@ -1240,16 +1249,28 @@ export default function Productos() {
                     </td>
 
                     <td className="px-5 py-4 text-right font-semibold text-[#766168]">
-                      {formatoMoneda(
-                        producto.precio_compra ??
-                          producto.precio_compra_base
+                      {esVerdadero(producto.usa_variantes) ? (
+                        <span className="text-xs font-black text-[#826A9A]">
+                          Por variante
+                        </span>
+                      ) : (
+                        formatoMoneda(
+                          producto.precio_compra ??
+                            producto.precio_compra_base
+                        )
                       )}
                     </td>
 
                     <td className="px-5 py-4 text-right font-black text-[#A84E6C]">
-                      {formatoMoneda(
-                        producto.precio_venta ??
-                          producto.precio_venta_base
+                      {esVerdadero(producto.usa_variantes) ? (
+                        <span className="text-xs font-black text-[#826A9A]">
+                          Por variante
+                        </span>
+                      ) : (
+                        formatoMoneda(
+                          producto.precio_venta ??
+                            producto.precio_venta_base
+                        )
                       )}
                     </td>
 
@@ -1487,33 +1508,54 @@ export default function Productos() {
                   />
                 </Campo>
 
-                {/* Compra */}
-                <Campo label="Precio compra">
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    name="precio_compra"
-                    value={form.precio_compra}
-                    onChange={handleChange}
-                    className={inputClass}
-                    placeholder="0.00"
-                  />
-                </Campo>
+                {!form.usa_variantes ? (
+                  <>
+                    {/* Compra */}
+                    <Campo label="Precio compra">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        name="precio_compra"
+                        value={form.precio_compra}
+                        onChange={handleChange}
+                        className={inputClass}
+                        placeholder="0.00"
+                      />
+                    </Campo>
 
-                {/* Venta */}
-                <Campo label="Precio venta *">
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    name="precio_venta"
-                    value={form.precio_venta}
-                    onChange={handleChange}
-                    className={inputClass}
-                    placeholder="0.00"
-                  />
-                </Campo>
+                    {/* Venta */}
+                    <Campo label="Precio venta *">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        name="precio_venta"
+                        value={form.precio_venta}
+                        onChange={handleChange}
+                        className={inputClass}
+                        placeholder="0.00"
+                      />
+                    </Campo>
+                  </>
+                ) : (
+                  <div className="md:col-span-2 rounded-2xl border border-[#E9DCE1] bg-[#FFF8FA] p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FBEAF0] text-[#B85F7D]">
+                        <Sparkles size={18} />
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-black text-[#513F46]">
+                          Precios administrados por variante
+                        </p>
+                        <p className="mt-1 text-xs font-semibold leading-relaxed text-[#9A838C]">
+                          No es necesario capturar un precio general. Cada variante tendrá su propio precio de compra y precio de venta cuando se registre.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Descripción */}
                 <div className="md:col-span-2">
@@ -1593,7 +1635,7 @@ export default function Productos() {
                               ¿Qué cambia entre una variante y otra?
                             </p>
                             <p className="mt-1 text-xs font-semibold leading-relaxed text-[#9A838C]">
-                              Selecciona todos los atributos que aplican. Después, al agregar inventario, solo se pedirán estos campos.
+                              Selecciona los atributos que identifican cada variante. Los precios de compra y venta se configurarán después de forma independiente para cada una.
                             </p>
                           </div>
 

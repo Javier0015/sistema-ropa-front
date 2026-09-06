@@ -43,28 +43,8 @@ const rolesDisponibles = [
     label: 'Super administrador',
   },
   {
-    value: 'ADMIN_SUCURSAL',
-    label: 'Administrador de sucursal',
-  },
-  {
     value: 'CAJERO',
     label: 'Cajero',
-  },
-  {
-    value: 'VENDEDOR',
-    label: 'Vendedor',
-  },
-  {
-    value: 'ALMACEN',
-    label: 'Almacén',
-  },
-  {
-    value: 'COMPRAS',
-    label: 'Compras',
-  },
-  {
-    value: 'LECTURA',
-    label: 'Lectura',
   },
 ];
 
@@ -593,10 +573,6 @@ export default function Alertas() {
             </div>
 
             <div>
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF3F6] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-[#B85F7D]">
-                <Sparkles size={13} />
-                Comunicación interna
-              </div>
 
               <h1 className="mt-3 text-2xl font-black tracking-[-0.03em] text-[#342A2E] sm:text-3xl">
                 Alertas del sistema

@@ -32,6 +32,17 @@ import {
   filtrarSucursalesPorRol,
 } from '../../utils/sucursalPermisos';
 
+/*
+ * FUNCIONES OCULTAS TEMPORALMENTE EN EL POS.
+ * Cambia una bandera a true para volver a mostrar/habilitar esa función.
+ */
+const FUNCIONES_POS = {
+  tarjetasFidelidad: false,
+  imprimirTicket: false,
+  pagoMixto: false,
+  iva: false,
+};
+
 const PAGOS_MIXTOS_INICIALES = {
   EFECTIVO: '',
   TARJETA: '',
@@ -461,16 +472,22 @@ export default function POS() {
     }, 0);
 
     const baseGravable = Math.max(subtotal, 0);
-    const impuesto = cobrarImpuesto ? baseGravable * 0.16 : 0;
+    const impuesto = FUNCIONES_POS.iva && cobrarImpuesto ? baseGravable * 0.16 : 0;
     const total = Math.max(baseGravable + impuesto, 0);
 
-    const esPagoConPuntos = !pagoMixtoActivo && metodoPago === 'PUNTOS';
+    const esPagoConPuntos =
+      FUNCIONES_POS.tarjetasFidelidad &&
+      !pagoMixtoActivo &&
+      metodoPago === 'PUNTOS';
     const puntosEstimados =
+      FUNCIONES_POS.tarjetasFidelidad &&
       tarjetaPuntos && puntosClienteActivo && !esPagoConPuntos
         ? Number((total * (porcentajeClientePuntos / 100)).toFixed(2))
         : 0;
 
-    const puntosDisponibles = Number(tarjetaPuntos?.puntos_actuales || 0);
+    const puntosDisponibles = FUNCIONES_POS.tarjetasFidelidad
+      ? Number(tarjetaPuntos?.puntos_actuales || 0)
+      : 0;
     const puntosNecesarios = Number(total.toFixed(2));
     const puntosFaltantes = Math.max(puntosNecesarios - puntosDisponibles, 0);
     const puedePagarConPuntos =
@@ -554,6 +571,8 @@ export default function POS() {
   };
 
   const alternarPagoMixto = () => {
+    if (!FUNCIONES_POS.pagoMixto) return;
+
     setPagoMixtoActivo((activo) => {
       const nuevoEstado = !activo;
 
@@ -573,6 +592,11 @@ export default function POS() {
   };
 
   const cargarConfiguracionPuntos = async () => {
+    if (!FUNCIONES_POS.tarjetasFidelidad) {
+      setConfiguracionPuntos(null);
+      return;
+    }
+
     try {
       const { data } = await api.get('/configuracion-puntos');
       if (data.ok) setConfiguracionPuntos(data.configuracion);
@@ -582,6 +606,12 @@ export default function POS() {
   };
 
   const cargarConfiguracionCorreoTicket = async () => {
+    if (!FUNCIONES_POS.tarjetasFidelidad) {
+      setConfiguracionCorreoSmtp(null);
+      setEnviarTicketDigital(false);
+      return;
+    }
+
     const idSucursalNumerico = Number(idSucursal);
 
     if (!Number.isInteger(idSucursalNumerico) || idSucursalNumerico <= 0) {
@@ -1168,6 +1198,11 @@ export default function POS() {
   const seleccionarMetodoPago = (metodo) => {
     if (pagoMixtoActivo) return;
 
+    if (metodo === 'PUNTOS' && !FUNCIONES_POS.tarjetasFidelidad) {
+      setMetodoPago('EFECTIVO');
+      return;
+    }
+
     if (metodo === 'PUNTOS' && !tarjetaPuntos) {
       Swal.fire({
         icon: 'warning',
@@ -1182,6 +1217,8 @@ export default function POS() {
   };
 
   const buscarTarjetaPuntos = async (codigoManual = null) => {
+    if (!FUNCIONES_POS.tarjetasFidelidad) return;
+
     const codigo = String(codigoManual || codigoTarjeta || '').trim();
 
     if (!codigo) {
@@ -1257,15 +1294,16 @@ export default function POS() {
       return;
     }
 
-    const pagosParaEnviar = pagoMixtoActivo ? resumenPagosMixtos.pagos : [];
+    const usarPagoMixto = FUNCIONES_POS.pagoMixto && pagoMixtoActivo;
+    const pagosParaEnviar = usarPagoMixto ? resumenPagosMixtos.pagos : [];
     const totalPagadoMixto = Number(resumenPagosMixtos.totalPagado.toFixed(2));
     const cambioMixto = Number(resumenPagosMixtos.cambio.toFixed(2));
     const totalAPagar = Number(resumen.total.toFixed(2));
-    const ticketDigitalSolicitado = Boolean(
-      enviarTicketDigital && puedeEnviarTicketDigital
-    );
+    const ticketDigitalSolicitado =
+      FUNCIONES_POS.tarjetasFidelidad &&
+      Boolean(enviarTicketDigital && puedeEnviarTicketDigital);
 
-    if (pagoMixtoActivo) {
+    if (usarPagoMixto) {
       if (pagosParaEnviar.length === 0) {
         Swal.fire({ icon: 'warning', title: 'Pagos requeridos', text: 'Captura al menos un método de pago.' });
         return;
@@ -1321,7 +1359,7 @@ export default function POS() {
       }
     }
 
-    const detallePagosHtml = pagoMixtoActivo
+    const detallePagosHtml = usarPagoMixto
       ? `
         <hr style="margin:10px 0" />
         <p><b>Pago mixto:</b></p>
@@ -1355,7 +1393,9 @@ export default function POS() {
           ${resumen.descuentoOfertas > 0
             ? `<p><b>Descuento por ofertas:</b> -${formatoMoneda(resumen.descuentoOfertas)}</p>`
             : ''}
-          <p><b>IVA:</b> ${cobrarImpuesto ? `Aplicado (${formatoMoneda(resumen.impuesto)})` : 'No aplicado'}</p>
+          ${FUNCIONES_POS.iva
+            ? `<p><b>IVA:</b> ${cobrarImpuesto ? `Aplicado (${formatoMoneda(resumen.impuesto)})` : 'No aplicado'}</p>`
+            : ''}
           ${detallePagosHtml}
           ${detalleTicketDigitalHtml}
         </div>
@@ -1371,8 +1411,8 @@ export default function POS() {
     try {
       setCobrando(true);
 
-      const metodoPagoFinal = pagoMixtoActivo ? 'MIXTO' : metodoPago;
-      const montoRecibidoFinal = pagoMixtoActivo
+      const metodoPagoFinal = usarPagoMixto ? 'MIXTO' : metodoPago;
+      const montoRecibidoFinal = usarPagoMixto
         ? totalPagadoMixto
         : metodoPago === 'EFECTIVO'
           ? Number(montoRecibido || 0)
@@ -1382,15 +1422,18 @@ export default function POS() {
         id_sucursal: Number(idSucursal),
         id_caja: Number(idCaja),
         id_sesion: Number(sesionAbierta.id_sesion),
-        id_tarjeta_puntos: tarjetaPuntos ? Number(tarjetaPuntos.id_tarjeta) : null,
+        id_tarjeta_puntos:
+          FUNCIONES_POS.tarjetasFidelidad && tarjetaPuntos
+            ? Number(tarjetaPuntos.id_tarjeta)
+            : null,
         metodo_pago: metodoPagoFinal,
         monto_recibido: montoRecibidoFinal,
-        pagos: pagoMixtoActivo ? pagosParaEnviar : undefined,
+        pagos: usarPagoMixto ? pagosParaEnviar : undefined,
         enviar_ticket_digital: ticketDigitalSolicitado,
         descuento: 0,
         descuento_ofertas: Number(resumen.descuentoOfertas || 0),
         subtotal_sin_descuento: Number(resumen.subtotalSinDescuento || 0),
-        impuesto: Number(resumen.impuesto || 0),
+        impuesto: FUNCIONES_POS.iva ? Number(resumen.impuesto || 0) : 0,
         productos: carrito.map((item) => ({
           id_producto: Number(item.id_producto),
           id_variante: item.id_variante ? Number(item.id_variante) : null,
@@ -1436,8 +1479,8 @@ export default function POS() {
             <div style="text-align:left">
               <p><b>Folio:</b> ${data.venta.folio}</p>
               <p><b>Total:</b> ${formatoMoneda(data.resumen?.total || 0)}</p>
-              <p><b>Método:</b> ${pagoMixtoActivo ? 'MIXTO' : metodoPago}</p>
-              ${pagoMixtoActivo
+              <p><b>Método:</b> ${usarPagoMixto ? 'MIXTO' : metodoPago}</p>
+              ${usarPagoMixto
                 ? `<p><b>Pagado:</b> ${formatoMoneda(totalPagadoMixto)}</p><p><b>Cambio:</b> ${formatoMoneda(cambioMixto)}</p>`
                 : metodoPago !== 'PUNTOS'
                   ? `<p><b>Cambio:</b> ${formatoMoneda(data.resumen?.cambio || 0)}</p>`
@@ -1445,14 +1488,16 @@ export default function POS() {
               ${detalleTicketDigitalResultadoHtml}
             </div>
           `,
-          showCancelButton: true,
-          confirmButtonText: 'Imprimir ticket',
+          showCancelButton: FUNCIONES_POS.imprimirTicket,
+          confirmButtonText: FUNCIONES_POS.imprimirTicket ? 'Imprimir ticket' : 'Cerrar',
           cancelButtonText: 'Cerrar',
           confirmButtonColor: '#B85F7D',
           cancelButtonColor: '#8B7A80',
         });
 
-        if (resultadoAlerta.isConfirmed) await imprimirTicketPOS(data);
+        if (FUNCIONES_POS.imprimirTicket && resultadoAlerta.isConfirmed) {
+          await imprimirTicketPOS(data);
+        }
 
         setCarrito([]);
         setMontoRecibido('');
@@ -1464,7 +1509,9 @@ export default function POS() {
         setEnviarTicketDigital(false);
         setMetodoPago('EFECTIVO');
 
-        await cargarConfiguracionPuntos();
+        if (FUNCIONES_POS.tarjetasFidelidad) {
+          await cargarConfiguracionPuntos();
+        }
         await cargarInventario();
         await cargarSesionAbierta();
       }
@@ -1938,6 +1985,8 @@ export default function POS() {
   };
 
   const imprimirTicketPOS = async (ventaData = null) => {
+    if (!FUNCIONES_POS.imprimirTicket) return;
+
     const datosTicket = ventaData || ventaFinalizada;
 
     if (!datosTicket?.venta) {
@@ -2336,6 +2385,7 @@ export default function POS() {
   };
 
   const abrirEscanerTarjeta = () => {
+    if (!FUNCIONES_POS.tarjetasFidelidad) return;
     setScannerTipo('TARJETA');
     setScannerAbierto(true);
   };
@@ -2359,7 +2409,7 @@ export default function POS() {
       return;
     }
 
-    if (scannerTipo === 'TARJETA') {
+    if (FUNCIONES_POS.tarjetasFidelidad && scannerTipo === 'TARJETA') {
       setCodigoTarjeta(codigo);
       cerrarEscaner();
       setTimeout(() => buscarTarjetaPuntos(codigo), 150);
@@ -2707,14 +2757,16 @@ export default function POS() {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => imprimirTicketPOS()}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-black text-emerald-800 shadow-sm"
-            >
-              <ReceiptText size={16} />
-              <span className="hidden sm:inline">Imprimir</span>
-            </button>
+            {FUNCIONES_POS.imprimirTicket && (
+              <button
+                type="button"
+                onClick={() => imprimirTicketPOS()}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-black text-emerald-800 shadow-sm"
+              >
+                <ReceiptText size={16} />
+                <span className="hidden sm:inline">Imprimir</span>
+              </button>
+            )}
           </div>
         </section>
       )}
@@ -3299,7 +3351,7 @@ function CarritoPOS({
           </div>
         )}
 
-        {!pagoMixtoActivo && metodoPago === 'PUNTOS' && (
+        {FUNCIONES_POS.tarjetasFidelidad && !pagoMixtoActivo && metodoPago === 'PUNTOS' && (
           <div
             className={`mt-4 rounded-2xl px-4 py-3 text-sm font-black ${
               resumen.puedePagarConPuntos
@@ -3316,7 +3368,8 @@ function CarritoPOS({
         )}
       </section>
 
-      <section className="border-b border-[#F4EAED] p-4">
+      {(FUNCIONES_POS.tarjetasFidelidad || FUNCIONES_POS.pagoMixto || FUNCIONES_POS.iva) && (
+        <section className="border-b border-[#F4EAED] p-4">
         <button
           type="button"
           onClick={() => setMostrarOpciones((actual) => !actual)}
@@ -3325,7 +3378,7 @@ function CarritoPOS({
           <div>
             <p className="text-sm font-black text-[#392F33]">Más opciones</p>
             <p className="text-xs font-semibold text-[#9A858D]">
-              Cliente, puntos, pago mixto e IVA.
+              Opciones adicionales de cobro.
             </p>
           </div>
           <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-[#A84E6C] shadow-sm">
@@ -3544,7 +3597,8 @@ function CarritoPOS({
             </div>
           </div>
         )}
-      </section>
+        </section>
+      )}
 
       <section className="sticky bottom-0 border-t border-[#F0E2E7] bg-white p-4 shadow-[0_-8px_24px_rgba(72,46,55,0.05)]">
         <div className="mb-3 rounded-2xl bg-[#FFFAFB] p-3">
@@ -3556,7 +3610,7 @@ function CarritoPOS({
                   Ahorras {formatoMoneda(resumen.descuentoOfertas)}
                 </p>
               )}
-              {cobrarImpuesto && (
+              {FUNCIONES_POS.iva && cobrarImpuesto && (
                 <p className="mt-0.5 text-[10px] font-bold text-[#A84E6C]">
                   Incluye IVA: {formatoMoneda(resumen.impuesto)}
                 </p>

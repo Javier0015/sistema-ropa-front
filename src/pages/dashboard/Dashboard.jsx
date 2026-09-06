@@ -702,10 +702,7 @@ export default function Dashboard() {
           <div className="relative p-5 sm:p-7 lg:p-8">
             <div className="grid gap-7 xl:grid-cols-[1fr_auto] xl:items-center">
               <div className="min-w-0">
-                <div className="inline-flex items-center gap-2 rounded-full border border-[#EFDCE2] bg-white/75 px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.13em] text-[#B85F7D] shadow-sm backdrop-blur">
-                  <Sparkles size={14} />
-                  Panel general
-                </div>
+                
 
                 <h1 className="mt-5 text-3xl font-black tracking-[-0.035em] text-[#33292D] sm:text-4xl lg:text-[2.65rem]">
                   Hola, {usuario?.nombre || 'Usuario'}

@@ -1006,9 +1006,7 @@ export default function Devoluciones() {
                   <ArrowRightLeft size={25} />
                 </div>
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-white/75">
-                    Módulo independiente
-                  </p>
+                
                   <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">
                     Cambios / Devoluciones
                   </h1>

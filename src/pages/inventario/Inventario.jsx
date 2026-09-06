@@ -76,6 +76,7 @@ const formEditarLoteInicial = {
   // SKU DESHABILITADO TEMPORALMENTE
   // sku: '',
   codigo_barras_variante: '',
+  precio_compra_variante: '',
   precio_venta_variante: '',
   atributos_variante: {},
   // PROVEEDOR DESHABILITADO TEMPORALMENTE
@@ -146,7 +147,6 @@ const configuracionVariantesDefault = {
   modelo: false,
   aroma: false,
   capacidad: false,
-  precio: false,
   personalizados: [],
 };
 
@@ -241,7 +241,7 @@ const obtenerCamposVariantes = (configuracion) => {
 
 let consecutivoVarianteTemporal = 0;
 
-const crearVarianteInventario = (campos = [], precioVentaBase = '') => {
+const crearVarianteInventario = (campos = []) => {
   consecutivoVarianteTemporal += 1;
 
   const atributos = {};
@@ -255,12 +255,8 @@ const crearVarianteInventario = (campos = [], precioVentaBase = '') => {
     // SKU DESHABILITADO TEMPORALMENTE
     // sku: '',
     codigo_barras: '',
-    precio_venta:
-      precioVentaBase !== undefined &&
-        precioVentaBase !== null &&
-        precioVentaBase !== ''
-        ? String(precioVentaBase)
-        : '',
+    precio_compra: '',
+    precio_venta: '',
     stock_inicial: '',
     imagen_archivo: null,
     imagen_preview: '',
@@ -279,23 +275,6 @@ const obtenerNombreVariante = (variante, campos = []) => {
 
   if (partes.length > 0) {
     return partes.join(' · ');
-  }
-
-  /*
-   * Cuando el precio es la única configuración de variante no existen
-   * atributos estructurales (talla, color, etc.). En ese caso utilizamos
-   * el precio como etiqueta visible de la variante.
-   */
-  const precio = Number(variante?.precio_venta);
-
-  if (
-    variante?.precio_venta !== undefined &&
-    variante?.precio_venta !== null &&
-    variante?.precio_venta !== '' &&
-    Number.isFinite(precio) &&
-    precio >= 0
-  ) {
-    return `Precio $${precio.toFixed(2)}`;
   }
 
   return 'Variante';
@@ -672,10 +651,6 @@ export default function Inventario() {
     [configuracionVariantesAsignacion]
   );
 
-  const asignacionUsaPrecioPorVariante = esVerdadero(
-    configuracionVariantesAsignacion?.precio
-  );
-
   const productoMovimientoSeleccionado = useMemo(() => {
     return (
       inventario.find(
@@ -714,6 +689,77 @@ export default function Inventario() {
     );
   }, [formAsignar.variantes]);
 
+  const calcularValorInventarioItem = (item, campoPrecio) => {
+    if (esVerdadero(item?.usa_variantes) && Array.isArray(item?.variantes)) {
+      return item.variantes.reduce(
+        (total, variante) =>
+          total +
+          Number(variante?.stock_actual || 0) *
+            Number(variante?.[campoPrecio] || 0),
+        0
+      );
+    }
+
+    return (
+      Number(item?.stock_actual || 0) *
+      Number(item?.[campoPrecio] || 0)
+    );
+  };
+
+  const obtenerPrecioPromedioItem = (item, campoPrecio) => {
+    if (!esVerdadero(item?.usa_variantes)) {
+      return Number(item?.[campoPrecio] || 0);
+    }
+
+    const variantes = Array.isArray(item?.variantes) ? item.variantes : [];
+
+    if (variantes.length === 0) return 0;
+
+    const stockTotal = variantes.reduce(
+      (total, variante) => total + Number(variante?.stock_actual || 0),
+      0
+    );
+
+    if (stockTotal > 0) {
+      const valorTotal = variantes.reduce(
+        (total, variante) =>
+          total +
+          Number(variante?.stock_actual || 0) *
+            Number(variante?.[campoPrecio] || 0),
+        0
+      );
+
+      return valorTotal / stockTotal;
+    }
+
+    const precios = variantes
+      .map((variante) => Number(variante?.[campoPrecio]))
+      .filter((precio) => Number.isFinite(precio) && precio >= 0);
+
+    if (precios.length === 0) return 0;
+
+    return precios.reduce((total, precio) => total + precio, 0) / precios.length;
+  };
+
+  const obtenerRangoPrecioItem = (item, campoPrecio) => {
+    if (!esVerdadero(item?.usa_variantes)) {
+      return formatoMoneda(item?.[campoPrecio]);
+    }
+
+    const precios = (Array.isArray(item?.variantes) ? item.variantes : [])
+      .map((variante) => Number(variante?.[campoPrecio]))
+      .filter((precio) => Number.isFinite(precio) && precio >= 0);
+
+    if (precios.length === 0) return 'Por variante';
+
+    const minimo = Math.min(...precios);
+    const maximo = Math.max(...precios);
+
+    return minimo === maximo
+      ? formatoMoneda(minimo)
+      : `${formatoMoneda(minimo)} - ${formatoMoneda(maximo)}`;
+  };
+
   const resumen = useMemo(() => {
     const totalProductos = inventarioFiltrado.length;
 
@@ -735,19 +781,15 @@ export default function Inventario() {
       esVerdadero(item.usa_variantes)
     ).length;
 
-    const valorInventario = inventarioFiltrado.reduce((acc, item) => {
-      return (
-        acc +
-        Number(item.stock_actual || 0) * Number(item.precio_compra || 0)
-      );
-    }, 0);
+    const valorInventario = inventarioFiltrado.reduce(
+      (acc, item) => acc + calcularValorInventarioItem(item, 'precio_compra'),
+      0
+    );
 
-    const valorVentaEstimado = inventarioFiltrado.reduce((acc, item) => {
-      return (
-        acc +
-        Number(item.stock_actual || 0) * Number(item.precio_venta || 0)
-      );
-    }, 0);
+    const valorVentaEstimado = inventarioFiltrado.reduce(
+      (acc, item) => acc + calcularValorInventarioItem(item, 'precio_venta'),
+      0
+    );
 
     return {
       totalProductos,
@@ -1411,6 +1453,11 @@ export default function Inventario() {
       // sku: loteItem.sku || '',
       codigo_barras_variante:
         loteItem.codigo_barras_variante || '',
+      precio_compra_variante:
+        loteItem.precio_compra_variante !== null &&
+          loteItem.precio_compra_variante !== undefined
+          ? String(loteItem.precio_compra_variante)
+          : '',
       precio_venta_variante:
         loteItem.precio_venta_variante !== null &&
           loteItem.precio_venta_variante !== undefined
@@ -1485,11 +1532,6 @@ export default function Inventario() {
       esVerdadero(productoLotes?.usa_variantes) &&
       Boolean(loteEditando?.id_variante);
 
-    const configuracionVarianteEdicion =
-      normalizarConfiguracionVariantes(
-        productoLotes?.configuracion_variantes
-      );
-
     const camposVarianteEdicion = editaVariante
       ? obtenerCamposVariantes(
         productoLotes?.configuracion_variantes
@@ -1518,20 +1560,25 @@ export default function Inventario() {
         return;
       }
 
+      const precioCompraVariante = Number(
+        formEditarLote.precio_compra_variante
+      );
+      const precioVentaVariante = Number(
+        formEditarLote.precio_venta_variante
+      );
+
       if (
-        esVerdadero(configuracionVarianteEdicion.precio) &&
-        (
-          formEditarLote.precio_venta_variante === '' ||
-          !Number.isFinite(
-            Number(formEditarLote.precio_venta_variante)
-          ) ||
-          Number(formEditarLote.precio_venta_variante) < 0
-        )
+        formEditarLote.precio_compra_variante === '' ||
+        !Number.isFinite(precioCompraVariante) ||
+        precioCompraVariante < 0 ||
+        formEditarLote.precio_venta_variante === '' ||
+        !Number.isFinite(precioVentaVariante) ||
+        precioVentaVariante < 0
       ) {
         Swal.fire({
           icon: 'warning',
-          title: 'Precio de variante inválido',
-          text: 'Captura un precio de venta válido para la variante.',
+          title: 'Precios de variante inválidos',
+          text: 'Captura un precio de compra y un precio de venta válidos para la variante.',
         });
         return;
       }
@@ -1594,15 +1641,12 @@ export default function Inventario() {
               formEditarLote.codigo_barras_variante || ''
             ).trim() || null,
           atributos: atributosVariantePayload,
-          ...(esVerdadero(
-            configuracionVarianteEdicion.precio
-          )
-            ? {
-              precio_venta: Number(
-                formEditarLote.precio_venta_variante
-              ),
-            }
-            : {}),
+          precio_compra: Number(
+            formEditarLote.precio_compra_variante
+          ),
+          precio_venta: Number(
+            formEditarLote.precio_venta_variante
+          ),
         }
         : null;
 
@@ -1708,27 +1752,19 @@ export default function Inventario() {
         const camposVariantes = obtenerCamposVariantes(
           configuracionVariantesProducto
         );
-        const usaPrecioPorVariante = esVerdadero(
-          configuracionVariantesProducto?.precio
-        );
-
         return {
           ...formAsignarInicial,
           id_sucursal: prev.id_sucursal || idSucursal,
           id_producto: value,
           precio_compra:
+            !usaVariantes &&
             productoSeleccionado?.precio_compra !== null &&
-              productoSeleccionado?.precio_compra !== undefined
+            productoSeleccionado?.precio_compra !== undefined
               ? String(productoSeleccionado.precio_compra)
               : '',
           variantes:
-            usaVariantes && (camposVariantes.length > 0 || usaPrecioPorVariante)
-              ? [
-                crearVarianteInventario(
-                  camposVariantes,
-                  productoSeleccionado?.precio_venta ?? ''
-                ),
-              ]
+            usaVariantes && camposVariantes.length > 0
+              ? [crearVarianteInventario(camposVariantes)]
               : [],
         };
       }
@@ -1745,10 +1781,7 @@ export default function Inventario() {
       ...prev,
       variantes: [
         ...(prev.variantes || []),
-        crearVarianteInventario(
-          camposVariantesAsignacion,
-          productoAsignacionSeleccionado?.precio_venta ?? ''
-        ),
+        crearVarianteInventario(camposVariantesAsignacion),
       ],
     }));
   };
@@ -1947,18 +1980,11 @@ export default function Inventario() {
     let variantesPayload = [];
 
     if (asignacionUsaVariantes) {
-      /*
-       * Precio por variante puede ser la única identidad configurada.
-       * Solo bloqueamos cuando no existe ningún atributo estructural NI precio.
-       */
-      if (
-        !camposVariantesAsignacion.length &&
-        !asignacionUsaPrecioPorVariante
-      ) {
+      if (!camposVariantesAsignacion.length) {
         Swal.fire({
           icon: 'warning',
           title: 'Configuración incompleta',
-          text: 'El producto usa variantes, pero no tiene atributos ni precio por variante configurados.',
+          text: 'El producto usa variantes, pero no tiene atributos configurados para identificar cada combinación.',
         });
         return;
       }
@@ -1978,22 +2004,20 @@ export default function Inventario() {
         );
 
         const cantidad = Number(variante.stock_inicial);
-
+        const precioCompra = Number(variante.precio_compra);
         const precioVenta = Number(variante.precio_venta);
-        const precioValido =
-          !asignacionUsaPrecioPorVariante ||
-          (
-            variante.precio_venta !== '' &&
-            Number.isFinite(precioVenta) &&
-            precioVenta >= 0
-          );
 
         return (
           !atributosCompletos ||
           variante.stock_inicial === '' ||
           !Number.isFinite(cantidad) ||
           cantidad < 0 ||
-          !precioValido
+          variante.precio_compra === '' ||
+          !Number.isFinite(precioCompra) ||
+          precioCompra < 0 ||
+          variante.precio_venta === '' ||
+          !Number.isFinite(precioVenta) ||
+          precioVenta < 0
         );
       });
 
@@ -2001,52 +2025,7 @@ export default function Inventario() {
         Swal.fire({
           icon: 'warning',
           title: 'Revisa las variantes',
-          text: asignacionUsaPrecioPorVariante
-            ? camposVariantesAsignacion.length > 0
-              ? 'Completa los atributos, la cantidad y un precio de venta válido para cada variante.'
-              : 'Captura una cantidad y un precio de venta válido para cada variante.'
-            : 'Completa todos los atributos configurados y captura una cantidad válida en cada variante.',
-        });
-        return;
-      }
-
-      const clavesVariantes = formAsignar.variantes.map((variante) => {
-        const claveAtributos = normalizarTexto(
-          camposVariantesAsignacion
-            .map((campo) => variante.atributos?.[campo.clave])
-            .join('|')
-        );
-
-        if (claveAtributos) {
-          return `atributos:${claveAtributos}`;
-        }
-
-        /*
-         * Si no hay talla/color/etc., el precio es la identidad de la variante.
-         * Así $100 y $200 son variantes distintas, pero dos filas de $100
-         * sí se consideran duplicadas.
-         */
-        if (asignacionUsaPrecioPorVariante) {
-          const precio = Number(variante.precio_venta);
-          return Number.isFinite(precio)
-            ? `precio:${precio.toFixed(2)}`
-            : `precio:${String(variante.precio_venta || '').trim()}`;
-        }
-
-        return 'sin-identidad';
-      });
-
-      const tieneDuplicadas =
-        new Set(clavesVariantes).size !== clavesVariantes.length;
-
-      if (tieneDuplicadas) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Variantes duplicadas',
-          text:
-            camposVariantesAsignacion.length === 0 && asignacionUsaPrecioPorVariante
-              ? 'Hay dos variantes con el mismo precio. Usa un precio diferente para identificar cada variante.'
-              : 'Hay dos filas con la misma combinación de atributos.',
+          text: 'Completa los atributos, precio de compra, precio de venta y cantidad de cada variante.',
         });
         return;
       }
@@ -2067,9 +2046,8 @@ export default function Inventario() {
           // SKU DESHABILITADO TEMPORALMENTE
           // sku: String(variante.sku || '').trim() || null,
           codigo_barras: String(variante.codigo_barras || '').trim() || null,
-          precio_venta: asignacionUsaPrecioPorVariante
-            ? Number(variante.precio_venta)
-            : null,
+          precio_compra: Number(variante.precio_compra),
+          precio_venta: Number(variante.precio_venta),
           stock_inicial: Number(variante.stock_inicial || 0),
           talla: atributos.talla || null,
           color: atributos.color || null,
@@ -2142,9 +2120,11 @@ export default function Inventario() {
         fecha_caducidad: asignacionControlaCaducidad
           ? formAsignar.fecha_caducidad || null
           : null,
-        precio_compra: formAsignar.precio_compra
-          ? Number(formAsignar.precio_compra)
-          : 0,
+        precio_compra: asignacionUsaVariantes
+          ? 0
+          : formAsignar.precio_compra
+            ? Number(formAsignar.precio_compra)
+            : 0,
         observaciones: formAsignar.observaciones || null,
         usa_variantes: asignacionUsaVariantes,
         variantes: asignacionUsaVariantes ? variantesPayload : [],
@@ -2756,7 +2736,7 @@ export default function Inventario() {
       inventarioFiltrado.forEach((item, index) => {
         const stockActual = Number(item.stock_actual || 0);
         const stockMinimo = Number(item.stock_minimo || 0);
-        const precioVenta = Number(item.precio_venta || 0);
+        const precioVenta = obtenerPrecioPromedioItem(item, 'precio_venta');
 
         const fechaCaducidad = item.proxima_caducidad
           ? new Date(item.proxima_caducidad)
@@ -3146,10 +3126,7 @@ export default function Inventario() {
             </div>
 
             <div className="min-w-0">
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF2F5] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-[#B85F7D]">
-                <Sparkles size={13} />
-                Control de inventario
-              </div>
+           
 
               <h1 className="mt-3 break-words text-2xl font-black tracking-[-0.03em] text-[#382D31] sm:text-3xl">
                 Inventario
@@ -3566,8 +3543,8 @@ export default function Inventario() {
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   <div className="rounded-2xl bg-[#FFFAFB] p-3">
                     <p className="text-[10px] font-black uppercase text-[#A08790]">Compra / Venta</p>
-                    <p className="mt-1 text-xs font-bold text-[#755F67]">{formatoMoneda(item.precio_compra)}</p>
-                    <p className="text-base font-black text-[#B85F7D]">{formatoMoneda(item.precio_venta)}</p>
+                    <p className="mt-1 text-xs font-bold text-[#755F67]">{obtenerRangoPrecioItem(item, 'precio_compra')}</p>
+                    <p className="text-base font-black text-[#B85F7D]">{obtenerRangoPrecioItem(item, 'precio_venta')}</p>
                   </div>
                   <div className="rounded-2xl bg-[#FFFAFB] p-3">
                     <p className="text-[10px] font-black uppercase text-[#A08790]">Mínimo / Ubicación</p>
@@ -3757,8 +3734,8 @@ export default function Inventario() {
                     </td>
 
                     <td className="px-5 py-4 text-right">
-                      <p className="text-xs font-semibold text-[#8B7A80]">{formatoMoneda(item.precio_compra)}</p>
-                      <p className="mt-0.5 font-black text-[#B85F7D]">{formatoMoneda(item.precio_venta)}</p>
+                      <p className="text-xs font-semibold text-[#8B7A80]">{obtenerRangoPrecioItem(item, 'precio_compra')}</p>
+                      <p className="mt-0.5 font-black text-[#B85F7D]">{obtenerRangoPrecioItem(item, 'precio_venta')}</p>
                     </td>
 
                     <td className="px-5 py-4 text-center">
@@ -4019,7 +3996,7 @@ export default function Inventario() {
                           Variantes del producto
                         </h3>
                         <p className="mt-1 text-xs leading-relaxed text-[#927B84]">
-                          El formulario usa exactamente los atributos que configuraste en el producto.
+                          El formulario usa los atributos configurados. Si dos variantes comparten los mismos atributos, pueden mantenerse separadas y distinguirse por nombre, código de barras o imagen.
                         </p>
 
                         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -4032,11 +4009,9 @@ export default function Inventario() {
                             </span>
                           ))}
 
-                          {asignacionUsaPrecioPorVariante && (
-                            <span className="rounded-full bg-[#FBEAF0] px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#A84E6C] ring-1 ring-[#E6C6D1]">
-                              Precio por variante
-                            </span>
-                          )}
+                          <span className="rounded-full bg-[#FBEAF0] px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#A84E6C] ring-1 ring-[#E6C6D1]">
+                            Compra y venta por variante
+                          </span>
                         </div>
                       </div>
 
@@ -4153,7 +4128,7 @@ export default function Inventario() {
                                     )
                                   }
                                   className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
-                                  placeholder="Opcional; se genera automáticamente"
+                                  placeholder="Ej. Azul flores, Azul rayas (opcional)"
                                 />
                               </div>
 
@@ -4195,31 +4170,50 @@ export default function Inventario() {
                                 />
                               </div>
 
-                              {asignacionUsaPrecioPorVariante && (
-                                <div>
-                                  <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
-                                    Precio de venta *
-                                  </label>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={variante.precio_venta}
-                                    onChange={(e) =>
-                                      actualizarVarianteAsignacion(
-                                        variante.id_temporal,
-                                        'precio_venta',
-                                        e.target.value
-                                      )
-                                    }
-                                    className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm font-black text-[#A84E6C] outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
-                                    placeholder="0.00"
-                                  />
-                                  <p className="mt-1 text-[10px] font-semibold text-[#9B858D]">
-                                    Este precio se respetará al vender esta variante.
-                                  </p>
-                                </div>
-                              )}
+                              <div>
+                                <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
+                                  Precio de compra *
+                                </label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={variante.precio_compra}
+                                  onChange={(e) =>
+                                    actualizarVarianteAsignacion(
+                                      variante.id_temporal,
+                                      'precio_compra',
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm font-black text-[#755F67] outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
+                                  placeholder="0.00"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
+                                  Precio de venta *
+                                </label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={variante.precio_venta}
+                                  onChange={(e) =>
+                                    actualizarVarianteAsignacion(
+                                      variante.id_temporal,
+                                      'precio_venta',
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm font-black text-[#A84E6C] outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
+                                  placeholder="0.00"
+                                />
+                                <p className="mt-1 text-[10px] font-semibold text-[#9B858D]">
+                                  Este precio se respetará al vender esta variante.
+                                </p>
+                              </div>
 
                               <div>
                                 <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
@@ -4422,21 +4416,23 @@ export default function Inventario() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-[#5B4950] mb-2">
-                    Precio compra
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    name="precio_compra"
-                    value={formAsignar.precio_compra}
-                    onChange={handleAsignarChange}
-                    className="w-full px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2]"
-                    placeholder="0.00"
-                  />
-                </div>
+                {!asignacionUsaVariantes && (
+                  <div>
+                    <label className="block text-sm font-bold text-[#5B4950] mb-2">
+                      Precio compra
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      name="precio_compra"
+                      value={formAsignar.precio_compra}
+                      onChange={handleAsignarChange}
+                      className="w-full px-4 py-3 rounded-2xl border border-[#EEDFE4] focus:outline-none focus:ring-2 focus:ring-[#FBEAF0] focus:border-[#D48BA2]"
+                      placeholder="0.00"
+                    />
+                  </div>
+                )}
 
                 {asignacionControlaLotes && (
                   <div>
@@ -5195,29 +5191,37 @@ export default function Inventario() {
                           />
                         </div>
 
-                        {esVerdadero(
-                          normalizarConfiguracionVariantes(
-                            productoLotes?.configuracion_variantes
-                          ).precio
-                        ) && (
-                            <div>
-                              <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
-                                Precio de venta *
-                              </label>
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                name="precio_venta_variante"
-                                value={
-                                  formEditarLote.precio_venta_variante
-                                }
-                                onChange={handleEditarLoteChange}
-                                className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm font-black text-[#49383F] outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
-                                placeholder="0.00"
-                              />
-                            </div>
-                          )}
+                        <div>
+                          <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
+                            Precio de compra variante *
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            name="precio_compra_variante"
+                            value={formEditarLote.precio_compra_variante}
+                            onChange={handleEditarLoteChange}
+                            className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm font-black text-[#755F67] outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
+                            placeholder="0.00"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="mb-1.5 block text-xs font-black text-[#6F5962]">
+                            Precio de venta variante *
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            name="precio_venta_variante"
+                            value={formEditarLote.precio_venta_variante}
+                            onChange={handleEditarLoteChange}
+                            className="w-full rounded-xl border border-[#EEDFE4] bg-white px-3.5 py-2.5 text-sm font-black text-[#A84E6C] outline-none focus:border-[#D48BA2] focus:ring-2 focus:ring-[#FBEAF0]"
+                            placeholder="0.00"
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
