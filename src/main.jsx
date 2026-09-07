@@ -6,6 +6,7 @@ import './index.css';
 
 import AppRouter from './router/AppRouter';
 import { AuthProvider } from './context/AuthContext';
+import { PermisosProvider } from './context/PermisosContext';
 
 registerSW({
   immediate: true,
@@ -20,7 +21,9 @@ registerSW({
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AuthProvider>
-      <AppRouter />
+      <PermisosProvider>
+        <AppRouter />
+      </PermisosProvider>
     </AuthProvider>
   </StrictMode>
 );

@@ -49,6 +49,8 @@ import CatalogoServiciosClinicos from '../pages/doctorShaddai/CatalogoServiciosC
 
 import ConfiguracionTicket from '../pages/configuracion/ConfiguracionTicket';
 
+import ConfiguracionPermisos from '../pages/ConfiguracionPermisos';
+
 export default function AppRouter() {
   return (
     <BrowserRouter>
@@ -331,6 +333,15 @@ export default function AppRouter() {
             }
           />
 
+<Route
+  path="configuracion/permisos"
+  element={
+    <RoleRoute modulo="configuracion-permisos">
+      <ConfiguracionPermisos />
+    </RoleRoute>
+  }
+/>
+
           <Route
             path="doctor-shaddai/recetas"
             element={
@@ -362,6 +373,7 @@ export default function AppRouter() {
             path="/app/doctor-shaddai/historial-laboratorio"
             element={<HistorialSolicitudesLaboratorio />}
           />
+
 
           <Route path="no-autorizado" element={<NoAutorizado />} />
         </Route>

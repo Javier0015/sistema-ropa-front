@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 
 import { useAuth } from '../context/AuthContext';
-import { tienePermiso } from '../config/permisos';
+import { usePermisos } from '../context/PermisosContext';
 
 /* =========================================================
    NAVEGACIÓN
@@ -58,7 +58,6 @@ const secciones = [
     id: 'inventario',
     titulo: 'Inventario',
     links: [
-     
       {
         to: '/app/inventario',
         label: 'Inventario',
@@ -71,7 +70,7 @@ const secciones = [
         icon: Search,
         modulo: 'stock-sucursales',
       },
-       {
+      {
         to: '/app/productos',
         label: 'Productos',
         icon: Package,
@@ -128,7 +127,6 @@ const secciones = [
       },
     ],
   },
-
 
   {
     id: 'compras',
@@ -208,6 +206,12 @@ const secciones = [
         icon: Settings,
         modulo: 'configuracion-ticket',
       },
+      {
+        to: '/app/configuracion/permisos',
+        label: 'Permisos',
+        icon: ShieldCheck,
+        modulo: 'configuracion-permisos',
+      },
     ],
   },
 ];
@@ -223,7 +227,20 @@ export default function Sidebar({
   const { usuario } = useAuth();
 
   /*
-   * Filtramos las secciones según los permisos actuales.
+   * Los permisos ahora se obtienen desde PermisosContext.
+   *
+   * PermisosContext consulta al backend y el backend obtiene
+   * los permisos desde PostgreSQL.
+   */
+  const {
+    tienePermiso,
+    cargandoPermisos,
+    errorPermisos,
+  } = usePermisos();
+
+  /*
+   * Filtramos las secciones según los permisos actuales
+   * almacenados en la base de datos.
    *
    * Si una sección no tiene ningún módulo disponible
    * para el usuario, simplemente no se muestra.
@@ -232,27 +249,164 @@ export default function Sidebar({
     .map((seccion) => ({
       ...seccion,
       links: seccion.links.filter((link) =>
-        tienePermiso(usuario?.rol, link.modulo)
+        tienePermiso(
+          usuario?.rol,
+          link.modulo
+        )
       ),
     }))
-    .filter((seccion) => seccion.links.length > 0);
+    .filter(
+      (seccion) =>
+        seccion.links.length > 0
+    );
 
-  const obtenerIniciales = () => {
-    const nombre = String(usuario?.nombre || usuario?.usuario || 'U')
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
+  /*
+   * Mientras los permisos están siendo consultados,
+   * mostramos un pequeño loader.
+   *
+   * Evita que aparezcan/desaparezcan opciones del menú
+   * mientras llega la respuesta del backend.
+   */
+  if (cargandoPermisos) {
+    return (
+      <aside
+        className={`
+          relative
+          h-screen
+          max-h-screen
+          w-[290px]
+          overflow-hidden
+          border-r
+          border-[#F0E2E7]
+          bg-[#FFFBFC]
+          text-[#342B2F]
+          shadow-[10px_0_40px_rgba(122,77,91,0.045)]
+          ${modoMovil
+            ? 'flex'
+            : 'hidden lg:flex'
+          }
+          flex-col
+        `}
+      >
+        {/* Fondo decorativo */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div
+            className="
+              absolute
+              -right-24
+              -top-24
+              h-64
+              w-64
+              rounded-full
+              bg-[#F9E3E9]/70
+              blur-3xl
+            "
+          />
 
-    if (!nombre.length) {
-      return 'U';
-    }
+          <div
+            className="
+              absolute
+              -bottom-28
+              -left-28
+              h-72
+              w-72
+              rounded-full
+              bg-[#FCEEF2]/80
+              blur-3xl
+            "
+          />
+        </div>
 
-    if (nombre.length === 1) {
-      return nombre[0].substring(0, 2).toUpperCase();
-    }
+        <div className="relative z-10 flex flex-1 items-center justify-center">
+          <div className="text-center">
+            <div
+              className="
+                mx-auto
+                h-8
+                w-8
+                animate-spin
+                rounded-full
+                border-4
+                border-[#F0DDE3]
+                border-t-[#B85F7D]
+              "
+            />
 
-    return `${nombre[0][0]}${nombre[1][0]}`.toUpperCase();
-  };
+            <p
+              className="
+                mt-3
+                text-xs
+                font-bold
+                text-[#8D747D]
+              "
+            >
+              Cargando menú...
+            </p>
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  /*
+   * Si por alguna razón no se pudieron obtener los permisos,
+   * evitamos mostrar módulos incorrectos.
+   *
+   * ROOT puede seguir trabajando gracias a la regla
+   * especial existente en PermisosContext.
+   */
+  if (
+    errorPermisos &&
+    usuario?.rol !== 'ROOT'
+  ) {
+    return (
+      <aside
+        className={`
+          relative
+          h-screen
+          max-h-screen
+          w-[290px]
+          overflow-hidden
+          border-r
+          border-[#F0E2E7]
+          bg-[#FFFBFC]
+          text-[#342B2F]
+          shadow-[10px_0_40px_rgba(122,77,91,0.045)]
+          ${modoMovil
+            ? 'flex'
+            : 'hidden lg:flex'
+          }
+          flex-col
+        `}
+      >
+        <div className="flex flex-1 items-center justify-center px-5">
+          <div
+            className="
+              rounded-2xl
+              border
+              border-red-200
+              bg-red-50
+              p-5
+              text-center
+            "
+          >
+            <ShieldCheck
+              size={30}
+              className="mx-auto text-red-500"
+            />
+
+            <p className="mt-3 text-sm font-black text-red-700">
+              No se pudieron cargar los permisos
+            </p>
+
+            <p className="mt-1 text-xs text-red-600">
+              Intenta actualizar la página.
+            </p>
+          </div>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside
@@ -267,10 +421,9 @@ export default function Sidebar({
         bg-[#FFFBFC]
         text-[#342B2F]
         shadow-[10px_0_40px_rgba(122,77,91,0.045)]
-        ${
-          modoMovil
-            ? 'flex'
-            : 'hidden lg:flex'
+        ${modoMovil
+          ? 'flex'
+          : 'hidden lg:flex'
         }
         flex-col
       `}
@@ -407,8 +560,6 @@ export default function Sidebar({
             </p>
           </div>
         </div>
-
-     
       </div>
 
       {/* =======================================================
@@ -475,20 +626,19 @@ export default function Sidebar({
                       transition-all
                       duration-200
 
-                      ${
-                        isActive
-                          ? `
+                      ${isActive
+                      ? `
                             bg-[#FBEAF0]
                             text-[#A84E6C]
                             shadow-[0_7px_20px_rgba(184,95,125,0.08)]
                           `
-                          : `
+                      : `
                             text-[#75636A]
                             hover:bg-white
                             hover:text-[#4A3A40]
                             hover:shadow-[0_7px_20px_rgba(106,69,81,0.06)]
                           `
-                      }
+                    }
 
                       focus-visible:ring-2
                       focus-visible:ring-[#E5AFC0]
@@ -510,10 +660,9 @@ export default function Sidebar({
                           transition-all
                           duration-200
 
-                          ${
-                            isActive
-                              ? 'bg-[#B85F7D] opacity-100'
-                              : 'bg-transparent opacity-0'
+                          ${isActive
+                            ? 'bg-[#B85F7D] opacity-100'
+                            : 'bg-transparent opacity-0'
                           }
                         `}
                       />
@@ -531,14 +680,13 @@ export default function Sidebar({
                           transition-all
                           duration-200
 
-                          ${
-                            isActive
-                              ? `
+                          ${isActive
+                            ? `
                                 bg-white
                                 text-[#B85F7D]
                                 shadow-[0_5px_15px_rgba(184,95,125,0.12)]
                               `
-                              : `
+                            : `
                                 bg-[#FFF4F7]
                                 text-[#A1838E]
                                 group-hover:bg-[#FCEBF0]
@@ -566,14 +714,13 @@ export default function Sidebar({
                           transition-all
                           duration-200
 
-                          ${
-                            isActive
-                              ? `
+                          ${isActive
+                            ? `
                                 translate-x-0
                                 text-[#B85F7D]
                                 opacity-100
                               `
-                              : `
+                            : `
                                 -translate-x-1
                                 text-[#C3ADB5]
                                 opacity-0
@@ -591,8 +738,6 @@ export default function Sidebar({
           </div>
         ))}
       </nav>
-
-      
 
       {/* =======================================================
           SCROLLBAR
