@@ -618,7 +618,7 @@ export default function Dashboard() {
       onClick: abrirModalGanancias,
       clickable: true,
     },
-    {
+   /* {
       title: 'Ticket promedio',
       value: formatoMoneda(resumen.ticket_promedio),
       icon: ReceiptText,
@@ -626,7 +626,7 @@ export default function Dashboard() {
       accent: '#A76C82',
       soft: '#FBF1F4',
       span: 'xl:col-span-4',
-    },
+    },*/
     {
       title: 'Caja actual',
       value: formatoMoneda(resumen.monto_esperado_caja),
@@ -649,7 +649,7 @@ export default function Dashboard() {
       onClick: abrirModalGastosOperativos,
       clickable: true,
     },
-    {
+  /*  {
       title: 'Bajo stock',
       value: formatoNumero(resumen.productos_bajo_stock),
       icon: AlertTriangle,
@@ -670,7 +670,7 @@ export default function Dashboard() {
       span: 'xl:col-span-3',
       onClick: abrirModalCaducidad,
       clickable: true,
-    },
+    },*/
   ];
 
   const tooltipContentStyle = {
@@ -837,7 +837,7 @@ export default function Dashboard() {
         {/* =====================================================
             KPIs
         ===================================================== */}
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-12">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-14">
           {cards.map((card) => {
             const Icon = card.icon;
 
